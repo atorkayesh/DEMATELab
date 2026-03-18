@@ -29,7 +29,7 @@ A desktop application for cause-and-effect analysis using DEMATEL and its extens
 ### From GitHub
 
 ```bash
-pip install git+https://github.com/your-username/DEMATEL_Toolkit.git
+pip install git+https://github.com/atorkayesh/DEMATEL_Toolkit.git
 ```
 
 ### From source

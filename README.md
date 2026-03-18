@@ -35,7 +35,7 @@ pip install git+https://github.com/atorkayesh/DEMATEL_Toolkit.git
 ### From source
 
 ```bash
-git clone https://github.com/your-username/DEMATEL_Toolkit.git
+git clone https://github.com/atorkayesh/DEMATEL_Toolkit.git
 cd DEMATEL_Toolkit
 pip install .
 ```

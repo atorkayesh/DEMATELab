@@ -959,6 +959,12 @@ class MainWindow(QMainWindow):
 
 
 def main() -> None:
+    # Set AppUserModelID for Windows taskbar icon
+    import sys
+    if sys.platform == "win32":
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("DEMATEL.Toolkit.App")
+
     app = QApplication(sys.argv)
 
     from .font_loader import ensure_inter_fonts

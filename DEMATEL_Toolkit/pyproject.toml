@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-DEMATEL-Toolkit = "dematel_tool.gui_app:main"
+DEMATEL-Toolkit = "DEMATEL_Toolkit.gui_app:main"
 
 [tool.setuptools]
-packages = ["dematel_tool"]
+packages = ["DEMATEL_Toolkit"]

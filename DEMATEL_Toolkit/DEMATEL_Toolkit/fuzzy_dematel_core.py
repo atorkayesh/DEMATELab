@@ -173,7 +173,7 @@ class FuzzyDematelEngine:
         scale = max(row_sums.max(), col_sums.max())
 
         if np.isclose(scale, 0.0):
-            raise ValueError("Normalization failed because the fuzzy direct matrix is all zeros.")
+            raise ValueError("All matrix cells are set to \"No influence\". Please assign at least one causal relationship before running the analysis.")
 
         return fuzzy_direct_matrix / scale
 

@@ -1,0 +1,2 @@
+[console_scripts]
+DEMATEL-Toolkit = DEMATEL_Toolkit.gui_app:main

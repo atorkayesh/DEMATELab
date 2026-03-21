@@ -1,0 +1,4 @@
+#!/bin/bash
+export PATH="/opt/miniconda3/bin:$PATH"
+cd "$(dirname "$0")/../../../DEMATEL_Toolkit"
+exec /opt/miniconda3/bin/python3 -m DEMATEL_Toolkit "$@"

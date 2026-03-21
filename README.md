@@ -50,6 +50,12 @@ After installation, launch the application from the terminal:
 DEMATEL-Toolkit
 ```
 
+For Windows setup, launch it in the terminal: 
+
+```bash
+python -m DEMATEL_Toolkit
+```
+
 ### Workflow
 
 1. Select a **solver type** and **threshold method** from the Setup panel

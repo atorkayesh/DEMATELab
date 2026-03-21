@@ -1,2 +1,14 @@
 .DS_Store
-.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Fonts (downloaded at runtime)
+assets/fonts/

@@ -11,7 +11,7 @@ A desktop application for cause-and-effect analysis using DEMATEL and its extens
 - **Five threshold methods:** Average, First Quartile, Median, Third Quartile, and Maximum Mean De-Entropy (MMDE)
 - **Interactive matrix editor** with linguistic dropdown inputs per expert
 - **Results viewer** with tabs for matrices, R/C scores, causal diagram, and heatmap
-- **Cluster analysis** of the total relation matrix (K-Means and Hierarchical)
+- **Cluster analysis** of the total relation matrix (K-Means)
 - **Export** results to XLSX and visualizations to PNG
 - **AI-generated explanation** of results via Gemini, OpenAI, OpenRouter, or Groq
 
@@ -47,7 +47,7 @@ pip install .
 After installation, launch the application from the terminal:
 
 ```bash
-DEMATEL-Toolkit
+DEMATEL_Toolkit
 ```
 
 For Windows setup, launch it in the terminal: 

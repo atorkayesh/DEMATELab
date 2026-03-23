@@ -29,13 +29,13 @@ A desktop application for cause-and-effect analysis using DEMATEL and its extens
 ### From GitHub
 
 ```bash
-pip install git+https://github.com/atorkayesh/DEMATEL_Toolkit.git
+pip install git+https://github.com/atorkayesh/DEMATELab.git
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/atorkayesh/DEMATEL_Toolkit.git
+git clone https://github.com/atorkayesh/DEMATELab.git
 cd DEMATEL_Toolkit
 pip install .
 ```
@@ -47,13 +47,13 @@ pip install .
 After installation, launch the application from the terminal:
 
 ```bash
-DEMATEL_Toolkit
+DEMATELab
 ```
 
 For Windows setup, launch it in the terminal: 
 
 ```bash
-python -m DEMATEL_Toolkit
+python -m DEMATELab
 ```
 
 ### Workflow
@@ -95,35 +95,6 @@ The AI tab generates an academic-style narrative interpretation of the results. 
 | Groq | llama-3.3-70b-versatile, mixtral-8x7b-32768 |
 
 An API key is required. Keys are never stored — they are only held in memory for the duration of the session.
-
----
-
-## Project Structure
-
-```
-DEMATEL_Toolkit/
-├── dematel_tool/
-│   ├── __init__.py
-│   ├── __main__.py
-│   ├── gui_app.py                  # Main window
-│   ├── matrix_editor_widget.py     # Expert matrix input
-│   ├── results_viewer_widget.py    # Results tabs and export
-│   ├── analysis_service.py         # Solver dispatcher
-│   ├── dematel_core.py             # Classical DEMATEL engine
-│   ├── fuzzy_dematel_core.py       # Fuzzy DEMATEL engine
-│   ├── grey_dematel_core.py        # Grey DEMATEL engine
-│   ├── fuzzy_z_dematel_core.py     # Fuzzy Z-DEMATEL conversion
-│   ├── clustering_service.py       # K-Means / Hierarchical clustering
-│   ├── mmde_service.py             # MMDE threshold algorithm
-│   ├── export_service.py           # XLSX and PNG export
-│   ├── llm_explanation_service.py  # LLM API calls
-│   ├── llm_worker.py               # Background QThread worker
-│   ├── matrix_parsers.py           # Text / Excel matrix parsing
-│   └── constants.py                # Scales, maps, enums
-└── pyproject.toml
-```
-
----
 
 ## License
 

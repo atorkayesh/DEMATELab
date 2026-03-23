@@ -1,4 +1,4 @@
-# DEMATEL Toolkit
+# DEMATELab
 
 A desktop application for cause-and-effect analysis using DEMATEL and its extensions. Built with Python and PySide6, it provides an interactive GUI for entering expert judgments, running the analysis, visualizing results, and generating AI-powered interpretations.
 

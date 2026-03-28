@@ -1014,10 +1014,6 @@ class ResultsViewerWidget(QWidget):
         ax.set_xticklabels(factors, rotation=45, ha="right")
         ax.set_yticklabels(factors)
 
-        for i in range(matrix.shape[0]):
-            for j in range(matrix.shape[1]):
-                ax.text(j, i, f"{matrix[i, j]:.2f}", ha="center", va="center", color="white")
-
         ax.set_title("Total Relation Matrix Heatmap", fontfamily="Inter", fontsize=10, fontweight="normal", color="#2d4d4c")
         self.heatmap_plot_tab.figure.colorbar(im, ax=ax)
         self.heatmap_plot_tab.figure.tight_layout()

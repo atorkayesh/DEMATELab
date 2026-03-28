@@ -11,14 +11,23 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
+    QFileDialog,
     QGridLayout,
+    QHBoxLayout,
     QLabel,
     QListView,
+    QMessageBox,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
     QTabWidget,
     QVBoxLayout,
     QWidget,
+)
+
+from .matrix_parsers import (
+    NO_INFLUENCE_LABEL,
+    parse_standard_linguistic_labels_from_excel_bytes,
 )
 
 
@@ -36,6 +45,16 @@ class ExpertMatrixTab(QWidget):
         self.factor_names = factor_names
         self.dropdown_terms = dropdown_terms
         self.diagonal_value = diagonal_value
+        self._supports_standard_xlsx_import = (
+            self.diagonal_value == NO_INFLUENCE_LABEL
+            and set(self.dropdown_terms) == {
+                "No influence",
+                "Low influence",
+                "Medium influence",
+                "High influence",
+                "Extreme influence",
+            }
+        )
         self.cell_widgets: list[list[QComboBox]] = []
 
         self._build_ui()
@@ -177,6 +196,83 @@ class ExpertMatrixTab(QWidget):
 
         scroll_area.setWidget(content)
         outer_layout.addWidget(scroll_area)
+        outer_layout.addSpacing(14)
+
+        import_row = QHBoxLayout()
+        import_row.setContentsMargins(0, 0, 0, 0)
+
+        self.import_button = QPushButton("Import Matrix from XLSX")
+        self.import_button.setCursor(Qt.PointingHandCursor)
+        self.import_button.setFixedHeight(34)
+        self.import_button.setStyleSheet("""
+            QPushButton {
+                font-family: 'Inter'; font-size: 12px; font-weight: 500;
+                color: #1e3333;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 0 16px;
+            }
+            QPushButton:hover {
+                border: 1px solid #bcdcdc;
+                background: #f7fbfb;
+            }
+            QPushButton:pressed {
+                background: #d0e7e6;
+            }
+        """)
+        self.import_button.clicked.connect(self._import_matrix_from_xlsx)
+        import_row.addWidget(self.import_button)
+        import_row.addStretch()
+        outer_layout.addLayout(import_row)
+
+    def _import_matrix_from_xlsx(self) -> None:
+        if not self._supports_standard_xlsx_import:
+            QMessageBox.information(
+                self,
+                "Import Not Available",
+                "XLSX import currently supports only the standard linguistic scale:\n"
+                "No influence, Low influence, Medium influence, High influence, Extreme influence.",
+            )
+            return
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import Matrix from XLSX",
+            "",
+            "Excel Files (*.xlsx)",
+        )
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, "rb") as handle:
+                matrix = parse_standard_linguistic_labels_from_excel_bytes(
+                    file_bytes=handle.read(),
+                    expected_size=len(self.factor_names),
+                )
+            self.set_matrix(matrix)
+        except Exception as exc:
+            QMessageBox.critical(self, "Import Error", str(exc))
+
+    def set_matrix(self, matrix: list[list[str]]) -> None:
+        expected_size = len(self.factor_names)
+        if len(matrix) != expected_size or any(len(row) != expected_size for row in matrix):
+            raise ValueError(
+                f"Imported matrix must be exactly {expected_size} x {expected_size}."
+            )
+
+        for i, row in enumerate(matrix):
+            for j, value in enumerate(row):
+                combo = self.cell_widgets[i][j]
+                if i == j:
+                    combo.setCurrentText(self.diagonal_value)
+                    continue
+
+                if value not in self.dropdown_terms:
+                    raise ValueError(f"Unsupported imported value: {value}")
+
+                combo.setCurrentText(value)
 
     def get_matrix(self) -> list[list[str]]:
         matrix: list[list[str]] = []

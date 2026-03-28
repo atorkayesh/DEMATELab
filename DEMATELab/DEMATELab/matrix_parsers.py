@@ -18,6 +18,43 @@ from .constants import DEFAULT_LINGUISTIC_MAP
 NO_INFLUENCE_LABEL = "No influence"
 
 
+def _normalize_standard_linguistic_label(value: str) -> str:
+    text = str(value).strip()
+
+    if text in DEFAULT_LINGUISTIC_MAP:
+        return text
+
+    raise ValueError(
+        "Invalid matrix value found: "
+        f"{value!r}. Allowed values are either "
+        "\"No influence, Low influence, Medium influence, High influence, Extreme influence\"."
+    )
+
+
+def _strip_string_cells(df: pd.DataFrame) -> pd.DataFrame:
+    return df.fillna("").astype(str).apply(lambda col: col.map(lambda x: x.strip()))
+
+
+def _extract_matrix_body(raw: pd.DataFrame, expected_size: int | None = None) -> pd.DataFrame:
+    if expected_size is not None:
+        if raw.shape == (expected_size, expected_size):
+            return raw
+
+        if raw.shape == (expected_size + 1, expected_size + 1):
+            return raw.iloc[1:, 1:].reset_index(drop=True)
+
+        raise ValueError(
+            f"Uploaded matrix must be either exactly {expected_size} x {expected_size} "
+            f"or {expected_size + 1} x {expected_size + 1} when the first row and "
+            "first column contain factor names."
+        )
+
+    if raw.shape[0] == raw.shape[1]:
+        return raw
+
+    raise ValueError("Uploaded matrix must be square.")
+
+
 def enforce_no_influence_diagonal_labels(matrix: list[list[str]]) -> list[list[str]]:
     n = len(matrix)
 
@@ -94,7 +131,7 @@ def parse_linguistic_matrix_from_excel_bytes(
     scale_map = mapping or DEFAULT_LINGUISTIC_MAP
 
     df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=sheet_name, header=None)
-    raw = df.fillna("").astype(str).applymap(lambda x: x.strip())
+    raw = _extract_matrix_body(_strip_string_cells(df))
 
     if raw.shape[0] != raw.shape[1]:
         raise ValueError("Uploaded matrix must be square.")
@@ -114,3 +151,26 @@ def parse_linguistic_matrix_from_excel_bytes(
         raise ValueError("Uploaded matrix must be square.")
 
     return matrix
+
+
+def parse_standard_linguistic_labels_from_excel_bytes(
+    file_bytes: bytes,
+    expected_size: int,
+    sheet_name: str | int = 0,
+) -> list[list[str]]:
+    df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=sheet_name, header=None)
+    raw = _extract_matrix_body(_strip_string_cells(df), expected_size=expected_size)
+
+    matrix: list[list[str]] = []
+
+    for i in range(expected_size):
+        row: list[str] = []
+        for j in range(expected_size):
+            if i == j:
+                row.append(NO_INFLUENCE_LABEL)
+                continue
+
+            row.append(_normalize_standard_linguistic_label(raw.iat[i, j]))
+        matrix.append(row)
+
+    return enforce_no_influence_diagonal_labels(matrix)

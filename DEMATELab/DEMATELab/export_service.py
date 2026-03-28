@@ -16,6 +16,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from .clustering_service import cluster_total_matrix, plot_clustered_heatmap
+from .constants import ClusteringMethod
 from .dematel_visualization import DematelPlotInput, DematelPlotStyle, plot_dematel_influence_map
 
 
@@ -139,7 +140,7 @@ def export_results_to_pdf(result, output_path: str | Path) -> Path:
 def export_clustered_heatmap_to_pdf(
     result,
     output_path: str | Path,
-    method: str = "kmeans",
+    method: str | ClusteringMethod = ClusteringMethod.KMEANS,
 ) -> Path:
     output_path = Path(output_path)
 

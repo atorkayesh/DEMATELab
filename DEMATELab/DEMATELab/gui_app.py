@@ -454,8 +454,12 @@ class MainWindow(QMainWindow):
             QComboBox {
                 font-family: 'Inter'; font-size: 13px; font-weight: 400;
                 color: #1e3333;
+                background-color: white;
                 border: 1px solid #e0e0e0; border-radius: 6px;
                 padding: 4px 14px;
+                selection-background-color: #d0e7e6;
+                selection-color: #1e3333;
+                combobox-popup: 1;
             }
             QComboBox:focus { border: 1px solid #bcdcdc; }
             QComboBox::drop-down { border: none; width: 28px; }
@@ -466,7 +470,10 @@ class MainWindow(QMainWindow):
             QComboBox QAbstractItemView {
                 font-family: 'Inter'; font-size: 12px; font-weight: 400;
                 color: #1e3333;
-                border: none; outline: none;
+                background-color: white;
+                selection-background-color: #d0e7e6;
+                selection-color: #1e3333;
+                border: 1px solid #e0e0e0; outline: none;
                 padding: 0; margin: 0;
             }
             QComboBox QAbstractItemView::item {
@@ -486,7 +493,7 @@ class MainWindow(QMainWindow):
             combo.setView(QListView())
             combo.view().setFrameShape(QFrame.Shape.NoFrame)
             combo.view().setSpacing(0)
-            combo.view().viewport().setStyleSheet("border: none;")
+            combo.view().viewport().setStyleSheet("background-color: white; color: #1e3333; border: none;")
             combo.setFixedHeight(34)
             combo.setStyleSheet(combo_style)
             combo.setCursor(Qt.PointingHandCursor)
@@ -983,12 +990,19 @@ def main() -> None:
         QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
             border: 1px solid #e2e5e9;
             border-radius: 4px;
-    
+            background-color: white;
+            color: #1e3333;
             padding: 0 10px;
+            selection-background-color: #d0e7e6;
+            selection-color: #1e3333;
         }
 
         QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
             border: 1px solid #bcdcdc;
+        }
+
+        QComboBox {
+            combobox-popup: 1;
         }
 
         QComboBox::drop-down {
@@ -1043,6 +1057,34 @@ def main() -> None:
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             padding: 10px 14px;
+        }
+
+        QComboBox QAbstractItemView,
+        QListView {
+            background-color: white;
+            color: #1e3333;
+            border: 1px solid #e0e0e0;
+            selection-background-color: #d0e7e6;
+            selection-color: #1e3333;
+            outline: none;
+        }
+
+        QMessageBox,
+        QMessageBox QWidget {
+            background-color: white;
+            color: #1a1a1a;
+        }
+
+        QMessageBox QLabel {
+            color: #1a1a1a;
+            background: transparent;
+        }
+
+        QMessageBox QTextEdit,
+        QMessageBox QPlainTextEdit {
+            background-color: white;
+            color: #1a1a1a;
+            border: 1px solid #e0e0e0;
         }
 
         QMessageBox QPushButton {
@@ -1461,8 +1503,12 @@ class MainWindow(QMainWindow):
             QComboBox {
                 font-family: 'Inter'; font-size: 13px; font-weight: 400;
                 color: #1e3333;
+                background-color: white;
                 border: 1px solid #e0e0e0; border-radius: 6px;
                 padding: 4px 14px;
+                selection-background-color: #d0e7e6;
+                selection-color: #1e3333;
+                combobox-popup: 1;
             }
             QComboBox:focus { border: 1px solid #bcdcdc; }
             QComboBox::drop-down { border: none; width: 28px; }
@@ -1473,7 +1519,10 @@ class MainWindow(QMainWindow):
             QComboBox QAbstractItemView {
                 font-family: 'Inter'; font-size: 12px; font-weight: 400;
                 color: #1e3333;
-                border: none; outline: none;
+                background-color: white;
+                selection-background-color: #d0e7e6;
+                selection-color: #1e3333;
+                border: 1px solid #e0e0e0; outline: none;
                 padding: 0; margin: 0;
             }
             QComboBox QAbstractItemView::item {
@@ -1493,7 +1542,7 @@ class MainWindow(QMainWindow):
             combo.setView(QListView())
             combo.view().setFrameShape(QFrame.Shape.NoFrame)
             combo.view().setSpacing(0)
-            combo.view().viewport().setStyleSheet("border: none;")
+            combo.view().viewport().setStyleSheet("background-color: white; color: #1e3333; border: none;")
             combo.setFixedHeight(34)
             combo.setStyleSheet(combo_style)
             combo.setCursor(Qt.PointingHandCursor)
@@ -1990,12 +2039,19 @@ def main() -> None:
         QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
             border: 1px solid #e2e5e9;
             border-radius: 4px;
-    
+            background-color: white;
+            color: #1e3333;
             padding: 0 10px;
+            selection-background-color: #d0e7e6;
+            selection-color: #1e3333;
         }
 
         QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
             border: 1px solid #bcdcdc;
+        }
+
+        QComboBox {
+            combobox-popup: 1;
         }
 
         QComboBox::drop-down {
@@ -2050,6 +2106,34 @@ def main() -> None:
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             padding: 10px 14px;
+        }
+
+        QComboBox QAbstractItemView,
+        QListView {
+            background-color: white;
+            color: #1e3333;
+            border: 1px solid #e0e0e0;
+            selection-background-color: #d0e7e6;
+            selection-color: #1e3333;
+            outline: none;
+        }
+
+        QMessageBox,
+        QMessageBox QWidget {
+            background-color: white;
+            color: #1a1a1a;
+        }
+
+        QMessageBox QLabel {
+            color: #1a1a1a;
+            background: transparent;
+        }
+
+        QMessageBox QTextEdit,
+        QMessageBox QPlainTextEdit {
+            background-color: white;
+            color: #1a1a1a;
+            border: 1px solid #e0e0e0;
         }
 
         QMessageBox QPushButton {

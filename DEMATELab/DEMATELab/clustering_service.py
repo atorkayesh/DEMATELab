@@ -13,7 +13,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
-from sklearn.cluster import AgglomerativeClustering, KMeans
+from sklearn.cluster import KMeans
 
 from .constants import CLUSTER_NAMES, ClusteringMethod
 
@@ -31,7 +31,7 @@ class ClusteringResult:
 
 def _fit_clustering(
     total_matrix: np.ndarray,
-    method: str | ClusteringMethod,
+    method: str | ClusteringMethod = ClusteringMethod.KMEANS,
     random_state: int = 42,
 ) -> np.ndarray:
     n_clusters = 4
@@ -44,15 +44,11 @@ def _fit_clustering(
     if n_items < n_clusters:
         raise ValueError("At least 4 factors are required for 4-group clustering.")
 
-    if method == ClusteringMethod.KMEANS.value:
-        model = KMeans(n_clusters=n_clusters, random_state=random_state, n_init="auto")
-        return model.fit_predict(total_matrix)
+    if method != ClusteringMethod.KMEANS.value:
+        raise ValueError(f"Unsupported clustering method: {method}. Only 'kmeans' is supported.")
 
-    if method == ClusteringMethod.HIERARCHICAL.value:
-        model = AgglomerativeClustering(n_clusters=n_clusters)
-        return model.fit_predict(total_matrix)
-
-    raise ValueError(f"Unsupported clustering method: {method}")
+    model = KMeans(n_clusters=n_clusters, random_state=random_state, n_init="auto")
+    return model.fit_predict(total_matrix)
 
 
 def _rank_clusters_by_intensity(
@@ -80,7 +76,7 @@ def _rank_clusters_by_intensity(
 def cluster_total_matrix(
     total_matrix: np.ndarray,
     factor_names: list[str],
-    method: str | ClusteringMethod,
+    method: str | ClusteringMethod = ClusteringMethod.KMEANS,
     random_state: int = 42,
 ) -> ClusteringResult:
     matrix = np.asarray(total_matrix, dtype=float)

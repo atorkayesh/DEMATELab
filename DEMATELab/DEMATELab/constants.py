@@ -53,7 +53,6 @@ class ThresholdMethod(str, Enum):
 
 class ClusteringMethod(str, Enum):
     KMEANS = "kmeans"
-    HIERARCHICAL = "hierarchical"
 
 
 CLUSTER_NAMES = ["Low", "Low2Medium", "Medium2High", "High"]

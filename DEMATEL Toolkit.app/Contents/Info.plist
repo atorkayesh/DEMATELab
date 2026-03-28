@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>DEMATEL Toolkit</string>
+    <string>DEMATELab</string>
     <key>CFBundleDisplayName</key>
-    <string>DEMATEL Toolkit</string>
+    <string>DEMATELab</string>
     <key>CFBundleIdentifier</key>
-    <string>com.dematel.toolkit</string>
+    <string>com.dematelab.app</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleExecutable</key>
-    <string>DEMATEL Toolkit</string>
+    <string>DEMATELab</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>NSHighResolutionCapable</key>

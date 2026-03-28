@@ -3,7 +3,7 @@ requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "DEMATEL-Toolkit"
+name = "DEMATELab"
 version = "0.1.0"
 description = "DEMATEL Desktop Tool with LLM explanation"
 authors = [
@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.scripts]
-DEMATEL-Toolkit = "DEMATEL_Toolkit.gui_app:main"
+DEMATELab = "DEMATELab.gui_app:main"
 
 [tool.setuptools]
-packages = ["DEMATEL_Toolkit"]
+packages = ["DEMATELab"]

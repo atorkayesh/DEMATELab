@@ -36,7 +36,7 @@ pip install git+https://github.com/atorkayesh/DEMATELab.git
 
 ```bash
 git clone https://github.com/atorkayesh/DEMATELab.git
-cd DEMATEL_Toolkit
+cd DEMATELab/DEMATELab
 pip install .
 ```
 

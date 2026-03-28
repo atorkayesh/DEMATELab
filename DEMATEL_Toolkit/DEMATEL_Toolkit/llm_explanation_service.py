@@ -181,7 +181,7 @@ def generate_dematel_explanation(
             model=selected_model,
             prompt=prompt,
             referer="http://localhost",
-            title="DEMATEL Toolkit",
+            title="DEMATELab",
         )
 
     if engine == "OpenAI":

@@ -1373,7 +1373,7 @@ class FloatStepperWidget(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("DEMATEL Toolkit ")
+        self.setWindowTitle("DEMATELab")
         self.resize(1400, 900)
         _logo = _ASSETS_DIR / "logo.png"
         if _logo.exists():
@@ -1425,7 +1425,7 @@ class MainWindow(QMainWindow):
         title_block_layout.setContentsMargins(0, 0, 0, 0)
         title_block_layout.setSpacing(6)
 
-        title = QLabel("DEMATEL Toolkit")
+        title = QLabel("DEMATELab")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-family: 'Inter'; font-size: 24px; font-weight: 600; background: transparent; color: #2d4d4c;")
         title_block_layout.addWidget(title)

@@ -159,10 +159,6 @@ class FuzzyDematelEngine:
         for expert in self.experts:
             weighted_matrix += expert.weight * expert.matrix
 
-        np.fill_diagonal(weighted_matrix[:, :, 0], 0.0)
-        np.fill_diagonal(weighted_matrix[:, :, 1], 0.0)
-        np.fill_diagonal(weighted_matrix[:, :, 2], 0.0)
-
         return weighted_matrix
 
     @staticmethod

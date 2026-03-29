@@ -839,7 +839,7 @@ class MainWindow(QMainWindow):
         card, box_layout = self._make_card(
             "matrixCard",
             "Matrix Input",
-            'Diagonal cells are fixed to "No influence" because a factor cannot directly influence itself.',
+            "Diagonal cells are fixed to the solver-specific no-influence value because a factor cannot directly influence itself.",
         )
 
         selected_solver = self.solver_combo.currentText().strip().lower().replace("_", " ")
@@ -866,7 +866,7 @@ class MainWindow(QMainWindow):
         box_layout.addWidget(run_divider)
         box_layout.addSpacing(24)
 
-        note_lbl = QLabel("Note: Diagonal cells are fixed to \u201cNo influence,\u201d since a factor cannot directly influence itself.")
+        note_lbl = QLabel("Note: Diagonal cells are fixed to the solver-specific no-influence value, and that value is preserved during analysis.")
         note_lbl.setStyleSheet("font-family: 'Inter'; font-size: 12px; font-weight: 300; color: #9a9a9a; background: transparent;")
         note_lbl.setWordWrap(True)
         box_layout.addWidget(note_lbl)
@@ -1888,7 +1888,7 @@ class MainWindow(QMainWindow):
         card, box_layout = self._make_card(
             "matrixCard",
             "Matrix Input",
-            'Diagonal cells are fixed to "No influence" because a factor cannot directly influence itself.',
+            "Diagonal cells are fixed to the solver-specific no-influence value because a factor cannot directly influence itself.",
         )
 
         selected_solver = self.solver_combo.currentText().strip().lower().replace("_", " ")
@@ -1915,7 +1915,7 @@ class MainWindow(QMainWindow):
         box_layout.addWidget(run_divider)
         box_layout.addSpacing(24)
 
-        note_lbl = QLabel("Note: Diagonal cells are fixed to \u201cNo influence,\u201d since a factor cannot directly influence itself.")
+        note_lbl = QLabel("Note: Diagonal cells are fixed to the solver-specific no-influence value, and that value is preserved during analysis.")
         note_lbl.setStyleSheet("font-family: 'Inter'; font-size: 12px; font-weight: 300; color: #9a9a9a; background: transparent;")
         note_lbl.setWordWrap(True)
         box_layout.addWidget(note_lbl)

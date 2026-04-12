@@ -8,6 +8,7 @@ Created on Tue Mar 17 13:46:13 2026
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -25,10 +26,28 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+
 from .matrix_parsers import (
     NO_INFLUENCE_LABEL,
     parse_standard_linguistic_labels_from_excel_bytes,
 )
+
+
+class NoWheelComboBox(QComboBox):
+    """QComboBox that ignores mouse wheel events to prevent accidental value changes."""
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        # Ignore wheel events - values should only change via dropdown selection
+        event.ignore()
+
+
+class SyncedScrollArea(QScrollArea):
+    """QScrollArea with synced scrollbars for frozen headers."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setFrameShape(QFrame.Shape.NoFrame)
 
 
 class ExpertMatrixTab(QWidget):
@@ -40,7 +59,7 @@ class ExpertMatrixTab(QWidget):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         self.factor_names = factor_names
         self.dropdown_terms = dropdown_terms
@@ -55,7 +74,7 @@ class ExpertMatrixTab(QWidget):
                 "Extreme influence",
             }
         )
-        self.cell_widgets: list[list[QComboBox]] = []
+        self.cell_widgets: list[list[NoWheelComboBox]] = []
 
         self._build_ui()
 
@@ -64,138 +83,173 @@ class ExpertMatrixTab(QWidget):
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll_area.setSizeAdjustPolicy(QScrollArea.SizeAdjustPolicy.AdjustToContents)
-        scroll_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        scroll_area.setStyleSheet("""
-            QScrollArea { background: transparent; border: none; }
-            QScrollArea > QWidget > QWidget { background: transparent; }
-            QScrollBar:vertical {
+        header_style = "font-family: 'Inter'; font-size: 12px; font-weight: 600; color: #1e3333; background: white;"
+        scroll_style = """
+            QScrollArea { background: white; border: none; }
+            QScrollBar:horizontal, QScrollBar:vertical {
                 background: transparent;
-                width: 4px;
-                margin: 0px;
+                border: none;
+            }
+            QScrollBar:horizontal { height: 26px; margin-top: 18px; }
+            QScrollBar:vertical { width: 26px; margin-left: 18px; }
+            QScrollBar::handle:horizontal {
+                background: #c8d8d8;
+                border-radius: 3px;
+                min-width: 30px;
+                max-height: 6px;
             }
             QScrollBar::handle:vertical {
                 background: #c8d8d8;
-                border-radius: 2px;
-                min-height: 20px;
+                border-radius: 3px;
+                min-height: 30px;
+                max-width: 6px;
             }
-            QScrollBar::handle:vertical:hover { background: #8ab0b0; }
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical { height: 0px; }
-            QScrollBar::add-page:vertical,
-            QScrollBar::sub-page:vertical { background: transparent; }
-            QScrollBar:horizontal {
-                background: transparent;
-                height: 4px;
-                margin: 0px;
-            }
-            QScrollBar::handle:horizontal {
-                background: #c8d8d8;
-                border-radius: 2px;
-                min-width: 20px;
-            }
-            QScrollBar::handle:horizontal:hover { background: #8ab0b0; }
-            QScrollBar::add-line:horizontal,
-            QScrollBar::sub-line:horizontal { width: 0px; }
-            QScrollBar::add-page:horizontal,
-            QScrollBar::sub-page:horizontal { background: transparent; }
-        """)
+            QScrollBar::handle:horizontal:hover, QScrollBar::handle:vertical:hover { background: #8ab0b0; }
+            QScrollBar::add-line, QScrollBar::sub-line { width: 0px; height: 0px; }
+            QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
+        """
 
-        content = QWidget()
-        content.setStyleSheet("background: transparent;")
-        content.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        grid = QGridLayout(content)
-        grid.setSpacing(4)
-        grid.setContentsMargins(8, 8, 8, 8)
+        # Calculate row header width based on longest factor name
+        row_header_width = 70
 
-        grid.addWidget(QLabel(""), 0, 0)
+        # Main grid layout: [corner | col headers] / [row headers | data cells]
+        matrix_container = QWidget()
+        matrix_container.setStyleSheet("background: white;")
+        matrix_grid = QGridLayout(matrix_container)
+        matrix_grid.setSpacing(0)
+        matrix_grid.setContentsMargins(8, 8, 8, 8)
 
-        header_style = "font-family: 'Inter'; font-size: 12px; font-weight: 600; color: #1e3333; background: transparent;"
+        # --- Top-left corner (empty) ---
+        corner = QWidget()
+        corner.setFixedSize(row_header_width, 34)
+        corner.setStyleSheet("background: white;")
+        matrix_grid.addWidget(corner, 0, 0)
 
-        for j, factor in enumerate(self.factor_names, start=1):
+        # --- Column headers (scrolls horizontally, synced with data) ---
+        col_header_scroll = SyncedScrollArea()
+        col_header_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        col_header_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        col_header_scroll.setFixedHeight(34)
+        col_header_scroll.setStyleSheet(scroll_style)
+
+        col_header_content = QWidget()
+        col_header_content.setStyleSheet("background: white;")
+        col_header_layout = QHBoxLayout(col_header_content)
+        col_header_layout.setSpacing(10)
+        col_header_layout.setContentsMargins(0, 0, 0, 0)
+
+        for factor in self.factor_names:
             label = QLabel(factor)
-            label.setAlignment(Qt.AlignCenter)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setStyleSheet(header_style)
-            grid.addWidget(label, 0, j)
-            grid.setColumnStretch(j, 1)
+            label.setFixedWidth(185)
+            label.setFixedHeight(34)
+            col_header_layout.addWidget(label)
 
-        for i, factor in enumerate(self.factor_names, start=1):
-            row_label = QLabel(factor)
-            row_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            row_label.setStyleSheet(header_style + " padding-right: 12px;")
-            grid.addWidget(row_label, i, 0)
+        col_header_scroll.setWidget(col_header_content)
+        matrix_grid.addWidget(col_header_scroll, 0, 1)
 
-            row_widgets: list[QComboBox] = []
+        # --- Row headers (scrolls vertically, synced with data) ---
+        row_header_scroll = SyncedScrollArea()
+        row_header_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        row_header_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        row_header_scroll.setFixedWidth(row_header_width)
+        row_header_scroll.setStyleSheet(scroll_style)
 
-            for j in range(1, len(self.factor_names) + 1):
-                combo = QComboBox()
+        row_header_content = QWidget()
+        row_header_content.setStyleSheet("background: white;")
+        row_header_layout = QVBoxLayout(row_header_content)
+        row_header_layout.setSpacing(10)
+        row_header_layout.setContentsMargins(0, 0, 0, 0)
+
+        for factor in self.factor_names:
+            label = QLabel(factor)
+            label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            label.setStyleSheet(header_style + " padding-right: 12px;")
+            label.setFixedHeight(34)
+            row_header_layout.addWidget(label)
+
+        row_header_scroll.setWidget(row_header_content)
+        matrix_grid.addWidget(row_header_scroll, 1, 0)
+
+        # --- Data cells (scrolls both ways) ---
+        data_scroll = SyncedScrollArea()
+        data_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        data_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        data_scroll.setStyleSheet(scroll_style)
+        data_scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        data_content = QWidget()
+        data_content.setStyleSheet("background: white;")
+        data_grid = QGridLayout(data_content)
+        data_grid.setSpacing(10)
+        data_grid.setContentsMargins(0, 0, 0, 0)
+
+        for i in range(len(self.factor_names)):
+            row_widgets: list[NoWheelComboBox] = []
+
+            for j in range(len(self.factor_names)):
+                combo = NoWheelComboBox()
                 combo.setView(QListView())
                 combo.view().setFrameShape(QFrame.Shape.NoFrame)
                 combo.view().setSpacing(0)
                 combo.view().viewport().setStyleSheet("border: none;")
                 combo.setFixedHeight(34)
-                combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-                combo.setStyleSheet("""
-                    QComboBox {
-                        font-family: 'Inter'; font-size: 13px; font-weight: 400;
-                        color: #1e3333;
-                        border: 1px solid #e0e0e0; border-radius: 6px;
-                        padding: 4px 14px;
-                    }
-                    QComboBox:focus { border: 1px solid #bcdcdc; }
-                    QComboBox::drop-down { border: none; width: 28px; }
-                    QComboBox::down-arrow {
-                        image: url(assets/icons/chevron-down.svg);
-                        width: 10px; height: 6px;
-                    }
-                    QComboBox QAbstractItemView {
-                        font-family: 'Inter'; font-size: 12px;
-                        font-weight: 400;
-                        color: #1e3333;
-                        border: none;
-                        outline: none;
-                        padding: 0;
-                        margin: 0;
-                    }
-                    QComboBox QAbstractItemView::item {
-                        color: #1e3333;
-                        padding: 4px 10px;
-                        min-height: 22px;
-                        border: none;
-                        margin: 0;
-                    }
-                    QComboBox QAbstractItemView::item:hover,
-                    QComboBox QAbstractItemView::item:selected {
-                        background: #d0e7e6;
-                        color: #1e3333;
-                    }
-                """)
+                combo.setFixedWidth(185)
                 combo.addItems(self.dropdown_terms)
 
                 if i == j:
                     combo.setCurrentText(self.diagonal_value)
                     combo.setEnabled(False)
-                    combo.setStyleSheet(combo.styleSheet() + """
-                        QComboBox:disabled {
-                            background: #f0f0f0;
+                    combo.setStyleSheet("""
+                        QComboBox {
+                            font-family: 'Inter'; font-size: 13px; font-weight: 400;
                             color: #b0b0b0;
-                            border: 1px solid #e0e0e0;
+                            background: #f0f0f0;
+                            border: 1px solid #e0e0e0; border-radius: 6px;
+                            padding: 4px 14px;
+                        }
+                        QComboBox::drop-down { border: none; width: 28px; }
+                        QComboBox::down-arrow {
+                            image: url(assets/icons/chevron-down.svg);
+                            width: 10px; height: 6px;
                         }
                     """)
                 else:
                     combo.setCurrentText(self.diagonal_value)
+                    combo.setProperty("default_value", self.diagonal_value)
+                    combo.currentTextChanged.connect(
+                        lambda text, c=combo: self._update_combo_style(c, text)
+                    )
+                    self._apply_combo_style(combo, is_selected=False)
 
-                grid.addWidget(combo, i, j)
+                data_grid.addWidget(combo, i, j)
                 row_widgets.append(combo)
 
             self.cell_widgets.append(row_widgets)
 
+        data_scroll.setWidget(data_content)
+        matrix_grid.addWidget(data_scroll, 1, 1)
 
-        scroll_area.setWidget(content)
-        outer_layout.addWidget(scroll_area)
+        # Sync horizontal scroll between column headers and data
+        data_scroll.horizontalScrollBar().valueChanged.connect(
+            col_header_scroll.horizontalScrollBar().setValue
+        )
+        col_header_scroll.horizontalScrollBar().valueChanged.connect(
+            data_scroll.horizontalScrollBar().setValue
+        )
+
+        # Sync vertical scroll between row headers and data
+        data_scroll.verticalScrollBar().valueChanged.connect(
+            row_header_scroll.verticalScrollBar().setValue
+        )
+        row_header_scroll.verticalScrollBar().valueChanged.connect(
+            data_scroll.verticalScrollBar().setValue
+        )
+
+        # Set matrix container to expand
+        matrix_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        outer_layout.addWidget(matrix_container, 1)
         outer_layout.addSpacing(14)
 
         import_row = QHBoxLayout()
@@ -225,6 +279,58 @@ class ExpertMatrixTab(QWidget):
         import_row.addWidget(self.import_button)
         import_row.addStretch()
         outer_layout.addLayout(import_row)
+
+    def _update_combo_style(self, combo: NoWheelComboBox, text: str) -> None:
+        """Update combo background based on whether value differs from default."""
+        default_value = combo.property("default_value")
+        is_selected = text != default_value
+        self._apply_combo_style(combo, is_selected)
+
+    def _apply_combo_style(self, combo: NoWheelComboBox, is_selected: bool) -> None:
+        """Apply the appropriate style based on selection state."""
+        if is_selected:
+            # Subtle green tint to indicate selection
+            bg_color = "#e8f5f4"
+        else:
+            # Default white background
+            bg_color = "white"
+
+        combo.setStyleSheet(f"""
+            QComboBox {{
+                font-family: 'Inter'; font-size: 13px; font-weight: 400;
+                color: #1e3333;
+                background: {bg_color};
+                border: 1px solid #e0e0e0; border-radius: 6px;
+                padding: 4px 14px;
+            }}
+            QComboBox:focus {{ border: 1px solid #bcdcdc; }}
+            QComboBox::drop-down {{ border: none; width: 28px; }}
+            QComboBox::down-arrow {{
+                image: url(assets/icons/chevron-down.svg);
+                width: 10px; height: 6px;
+            }}
+            QComboBox QAbstractItemView {{
+                font-family: 'Inter'; font-size: 12px;
+                font-weight: 400;
+                color: #1e3333;
+                border: none;
+                outline: none;
+                padding: 0;
+                margin: 0;
+            }}
+            QComboBox QAbstractItemView::item {{
+                color: #1e3333;
+                padding: 4px 10px;
+                min-height: 22px;
+                border: none;
+                margin: 0;
+            }}
+            QComboBox QAbstractItemView::item:hover,
+            QComboBox QAbstractItemView::item:selected {{
+                background: #d0e7e6;
+                color: #1e3333;
+            }}
+        """)
 
     def _import_matrix_from_xlsx(self) -> None:
         if not self._supports_standard_xlsx_import:
@@ -299,7 +405,7 @@ class MatrixEditorWidget(QWidget):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         self.factor_names = factor_names
         self.expert_names = expert_names
@@ -319,7 +425,7 @@ class MatrixEditorWidget(QWidget):
             QTabWidget::pane {
                 background: white;
                 border: none;
-                padding-top: 30px;
+                padding-top: 10px;
             }
             QTabWidget::tab-bar {
                 alignment: right;
@@ -346,7 +452,7 @@ class MatrixEditorWidget(QWidget):
             }
             QTabBar::tab:hover:!selected { color: #1e3333; }
         """)
-        self.tab_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.tab_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.tab_widget.tabBar().show()
         self.tab_widget.tabBar().setCursor(Qt.PointingHandCursor)
         layout.addWidget(self.tab_widget)

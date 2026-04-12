@@ -866,12 +866,6 @@ class MainWindow(QMainWindow):
         box_layout.addWidget(run_divider)
         box_layout.addSpacing(24)
 
-        note_lbl = QLabel("Note: Diagonal cells are fixed to the solver-specific no-influence value, and that value is preserved during analysis.")
-        note_lbl.setStyleSheet("font-family: 'Inter'; font-size: 12px; font-weight: 300; color: #9a9a9a; background: transparent;")
-        note_lbl.setWordWrap(True)
-        box_layout.addWidget(note_lbl)
-        box_layout.addSpacing(8)
-
         self.run_error_label = QLabel("")
         self.run_error_label.setStyleSheet("font-family: 'Inter'; font-size: 12px; font-weight: 400; color: #d02e34; background: transparent;")
         self.run_error_label.setWordWrap(True)
@@ -1914,12 +1908,6 @@ class MainWindow(QMainWindow):
         run_divider.setStyleSheet("background: #e8e8e8; border: none;")
         box_layout.addWidget(run_divider)
         box_layout.addSpacing(24)
-
-        note_lbl = QLabel("Note: Diagonal cells are fixed to the solver-specific no-influence value, and that value is preserved during analysis.")
-        note_lbl.setStyleSheet("font-family: 'Inter'; font-size: 12px; font-weight: 300; color: #9a9a9a; background: transparent;")
-        note_lbl.setWordWrap(True)
-        box_layout.addWidget(note_lbl)
-        box_layout.addSpacing(8)
 
         self.run_error_label = QLabel("")
         self.run_error_label.setStyleSheet("font-family: 'Inter'; font-size: 12px; font-weight: 400; color: #d02e34; background: transparent;")

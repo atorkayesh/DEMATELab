@@ -92,6 +92,13 @@ class PlotTab(QWidget):
         self.current_zoom = 1.0
         self.title = title
 
+        self._scroll_area = QScrollArea()
+        self._scroll_area.setWidget(self.canvas)
+        self._scroll_area.setWidgetResizable(False)
+        self._scroll_area.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self._scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        self._scroll_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 14, 16, 14)
         layout.setSpacing(8)
@@ -136,8 +143,7 @@ class PlotTab(QWidget):
 
         layout.addLayout(zoom_row)
         layout.addSpacing(20)
-        layout.addWidget(self.canvas, alignment=Qt.AlignHCenter | Qt.AlignVCenter)
-        layout.addStretch()
+        layout.addWidget(self._scroll_area)
 
     def zoom_in(self) -> None:
         self.current_zoom *= 1.2
@@ -148,7 +154,11 @@ class PlotTab(QWidget):
         self._apply_zoom()
 
     def _apply_zoom(self) -> None:
-        self.figure.set_size_inches(8 * self.current_zoom, 6 * self.current_zoom, forward=True)
+        w_in = 8 * self.current_zoom
+        h_in = 6 * self.current_zoom
+        dpi = self.figure.dpi
+        self.figure.set_size_inches(w_in, h_in, forward=False)
+        self.canvas.setFixedSize(int(w_in * dpi), int(h_in * dpi))
         self.figure.tight_layout()
         self.canvas.draw()
 

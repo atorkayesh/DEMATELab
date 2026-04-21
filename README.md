@@ -13,7 +13,7 @@ A desktop application for cause-and-effect analysis using DEMATEL and its extens
 - **Results viewer** with tabs for matrices, R/C scores, causal diagram, and heatmap
 - **Cluster analysis** of the total relation matrix (K-Means)
 - **Export** results to XLSX and visualizations to PNG
-- **AI-generated explanation** of results via Gemini, OpenAI, OpenRouter, or Groq
+- **AI-generated explanation** of results via LLMs
 
 ---
 

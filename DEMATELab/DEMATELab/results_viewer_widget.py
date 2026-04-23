@@ -1320,7 +1320,6 @@ class ResultsViewerWidget(QWidget):
                 )
                 df_summary.to_excel(writer, sheet_name="Summary", index=False)
 
-            QMessageBox.information(self, "Export Successful", "Results exported to XLSX successfully.")
         except Exception as exc:
             QMessageBox.critical(self, "Export Error", f"Failed to export XLSX:\n{exc}")
 

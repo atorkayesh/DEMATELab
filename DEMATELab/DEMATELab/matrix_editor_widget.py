@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from .matrix_parsers import (
     NO_INFLUENCE_LABEL,
+    parse_standard_linguistic_labels_from_excel_workbook_bytes,
     parse_standard_linguistic_labels_from_excel_bytes,
 )
 
@@ -56,6 +57,7 @@ class ExpertMatrixTab(QWidget):
         factor_names: list[str],
         dropdown_terms: list[str],
         diagonal_value: str,
+        import_all_callback=None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -74,6 +76,7 @@ class ExpertMatrixTab(QWidget):
                 "Extreme influence",
             }
         )
+        self._import_all_callback = import_all_callback
         self.cell_widgets: list[list[NoWheelComboBox]] = []
 
         self._build_ui()
@@ -255,10 +258,23 @@ class ExpertMatrixTab(QWidget):
         import_row = QHBoxLayout()
         import_row.setContentsMargins(0, 0, 0, 0)
 
-        self.import_button = QPushButton("Import Matrix from XLSX")
-        self.import_button.setCursor(Qt.PointingHandCursor)
-        self.import_button.setFixedHeight(34)
-        self.import_button.setStyleSheet("""
+        self.import_button = self._create_import_button("Import Matrix from XLSX")
+        self.import_button.clicked.connect(self._import_matrix_from_xlsx)
+        import_row.addWidget(self.import_button)
+
+        if self._supports_standard_xlsx_import and self._import_all_callback is not None:
+            self.import_all_button = self._create_import_button("Import All Experts from XLSX")
+            self.import_all_button.clicked.connect(self._import_all_callback)
+            import_row.addWidget(self.import_all_button)
+
+        import_row.addStretch()
+        outer_layout.addLayout(import_row)
+
+    def _create_import_button(self, text: str) -> QPushButton:
+        button = QPushButton(text)
+        button.setCursor(Qt.PointingHandCursor)
+        button.setFixedHeight(34)
+        button.setStyleSheet("""
             QPushButton {
                 font-family: 'Inter'; font-size: 12px; font-weight: 500;
                 color: #1e3333;
@@ -275,10 +291,7 @@ class ExpertMatrixTab(QWidget):
                 background: #d0e7e6;
             }
         """)
-        self.import_button.clicked.connect(self._import_matrix_from_xlsx)
-        import_row.addWidget(self.import_button)
-        import_row.addStretch()
-        outer_layout.addLayout(import_row)
+        return button
 
     def _update_combo_style(self, combo: NoWheelComboBox, text: str) -> None:
         """Update combo background based on whether value differs from default."""
@@ -411,6 +424,16 @@ class MatrixEditorWidget(QWidget):
         self.expert_names = expert_names
         self.dropdown_terms = dropdown_terms
         self.diagonal_value = diagonal_value
+        self._supports_standard_xlsx_import = (
+            self.diagonal_value == NO_INFLUENCE_LABEL
+            and set(self.dropdown_terms) == {
+                "No influence",
+                "Low influence",
+                "Medium influence",
+                "High influence",
+                "Extreme influence",
+            }
+        )
 
         self.tabs: list[ExpertMatrixTab] = []
 
@@ -462,9 +485,72 @@ class MatrixEditorWidget(QWidget):
                 factor_names=self.factor_names,
                 dropdown_terms=self.dropdown_terms,
                 diagonal_value=self.diagonal_value,
+                import_all_callback=self._import_all_matrices_from_xlsx if self._supports_standard_xlsx_import else None,
             )
             self.tabs.append(tab)
             self.tab_widget.addTab(tab, expert_name)
+
+    def _create_import_button(self, text: str) -> QPushButton:
+        button = QPushButton(text)
+        button.setCursor(Qt.PointingHandCursor)
+        button.setFixedHeight(34)
+        button.setStyleSheet("""
+            QPushButton {
+                font-family: 'Inter'; font-size: 12px; font-weight: 500;
+                color: #1e3333;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 0 16px;
+            }
+            QPushButton:hover {
+                border: 1px solid #bcdcdc;
+                background: #f7fbfb;
+            }
+            QPushButton:pressed {
+                background: #d0e7e6;
+            }
+        """)
+        return button
+
+    def _import_all_matrices_from_xlsx(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import All Expert Matrices from XLSX",
+            "",
+            "Excel Files (*.xlsx)",
+        )
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, "rb") as handle:
+                workbook_matrices = parse_standard_linguistic_labels_from_excel_workbook_bytes(
+                    file_bytes=handle.read(),
+                    expected_size=len(self.factor_names),
+                    expected_sheet_count=len(self.tabs),
+                )
+            self._apply_workbook_matrices(workbook_matrices)
+        except Exception as exc:
+            QMessageBox.critical(self, "Import Error", str(exc))
+
+    def _apply_workbook_matrices(
+        self,
+        workbook_matrices: dict[str, list[list[str]]],
+    ) -> None:
+        normalized_sheet_map = {
+            sheet_name.strip().casefold(): matrix
+            for sheet_name, matrix in workbook_matrices.items()
+        }
+        normalized_expert_names = [name.strip().casefold() for name in self.expert_names]
+
+        if all(name in normalized_sheet_map for name in normalized_expert_names):
+            ordered_matrices = [normalized_sheet_map[name] for name in normalized_expert_names]
+        else:
+            ordered_matrices = list(workbook_matrices.values())
+
+        for tab, matrix in zip(self.tabs, ordered_matrices):
+            tab.set_matrix(matrix)
 
     def get_all_matrices(self) -> list[list[list[str]]]:
         return [tab.get_matrix() for tab in self.tabs]

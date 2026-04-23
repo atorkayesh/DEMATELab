@@ -55,6 +55,34 @@ def _extract_matrix_body(raw: pd.DataFrame, expected_size: int | None = None) ->
     raise ValueError("Uploaded matrix must be square.")
 
 
+def _parse_standard_linguistic_labels_from_dataframe(
+    df: pd.DataFrame,
+    expected_size: int,
+    source_label: str,
+) -> list[list[str]]:
+    try:
+        raw = _extract_matrix_body(_strip_string_cells(df), expected_size=expected_size)
+    except ValueError as exc:
+        raise ValueError(f"{source_label}: {exc}") from exc
+
+    matrix: list[list[str]] = []
+
+    for i in range(expected_size):
+        row: list[str] = []
+        for j in range(expected_size):
+            if i == j:
+                row.append(NO_INFLUENCE_LABEL)
+                continue
+
+            try:
+                row.append(_normalize_standard_linguistic_label(raw.iat[i, j]))
+            except ValueError as exc:
+                raise ValueError(f"{source_label}: {exc}") from exc
+        matrix.append(row)
+
+    return enforce_no_influence_diagonal_labels(matrix)
+
+
 def enforce_no_influence_diagonal_labels(matrix: list[list[str]]) -> list[list[str]]:
     n = len(matrix)
 
@@ -159,18 +187,40 @@ def parse_standard_linguistic_labels_from_excel_bytes(
     sheet_name: str | int = 0,
 ) -> list[list[str]]:
     df = pd.read_excel(io.BytesIO(file_bytes), sheet_name=sheet_name, header=None)
-    raw = _extract_matrix_body(_strip_string_cells(df), expected_size=expected_size)
+    source_label = "Uploaded sheet"
+    if isinstance(sheet_name, str):
+        source_label = f"Sheet '{sheet_name}'"
 
-    matrix: list[list[str]] = []
+    return _parse_standard_linguistic_labels_from_dataframe(
+        df=df,
+        expected_size=expected_size,
+        source_label=source_label,
+    )
 
-    for i in range(expected_size):
-        row: list[str] = []
-        for j in range(expected_size):
-            if i == j:
-                row.append(NO_INFLUENCE_LABEL)
-                continue
 
-            row.append(_normalize_standard_linguistic_label(raw.iat[i, j]))
-        matrix.append(row)
+def parse_standard_linguistic_labels_from_excel_workbook_bytes(
+    file_bytes: bytes,
+    expected_size: int,
+    expected_sheet_count: int,
+) -> dict[str, list[list[str]]]:
+    workbook = pd.read_excel(io.BytesIO(file_bytes), sheet_name=None, header=None)
 
-    return enforce_no_influence_diagonal_labels(matrix)
+    if not workbook:
+        raise ValueError("Uploaded workbook does not contain any sheets.")
+
+    if len(workbook) != expected_sheet_count:
+        raise ValueError(
+            "Uploaded workbook must contain exactly "
+            f"{expected_sheet_count} sheets, one for each expert. Found {len(workbook)}."
+        )
+
+    parsed_sheets: dict[str, list[list[str]]] = {}
+
+    for sheet_name, df in workbook.items():
+        parsed_sheets[sheet_name] = _parse_standard_linguistic_labels_from_dataframe(
+            df=df,
+            expected_size=expected_size,
+            source_label=f"Sheet '{sheet_name}'",
+        )
+
+    return parsed_sheets

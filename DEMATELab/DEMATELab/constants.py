@@ -47,7 +47,7 @@ class ThresholdMethod(str, Enum):
     AVERAGE = "average"
     FIRST_QUARTILE = "first_quartile"
     MEDIAN = "median"
-    THIRD_QUARTILE = "Third_quartile"
+    THIRD_QUARTILE = "third_quartile"
     MMDE = "mmde"
 
 

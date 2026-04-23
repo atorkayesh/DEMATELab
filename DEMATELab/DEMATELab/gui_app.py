@@ -11,6 +11,9 @@ import sys
 from pathlib import Path
 
 _ASSETS_DIR = Path(__file__).parent / "assets"
+_WEIGHT_DECIMALS = 3
+_WEIGHT_STEP = 0.001
+_WEIGHT_SUM_TOLERANCE = 0.005
 
 from PySide6.QtCore import Qt, QSize, Property, QPropertyAnimation, QEasingCurve
 import qtawesome as qta
@@ -47,6 +50,55 @@ from .constants import (
     Z_LINGUISTIC_TERMS,
     Z_NO_INFLUENCE_DEFAULT,
 )
+
+
+def _equal_weight_defaults(expert_count: int) -> list[float]:
+    units = 10 ** _WEIGHT_DECIMALS
+    base, remainder = divmod(units, expert_count)
+    return [
+        (base + (1 if index < remainder else 0)) / units
+        for index in range(expert_count)
+    ]
+
+
+def _normalize_weight_inputs(weights: list[float]) -> list[float] | None:
+    if not weights:
+        return []
+
+    total = sum(weights)
+    if total <= 0 or abs(total - 1.0) > _WEIGHT_SUM_TOLERANCE:
+        return None
+
+    units = 10 ** _WEIGHT_DECIMALS
+    normalized_units = [int(round(weight * units)) for weight in weights]
+    remainder = units - sum(normalized_units)
+
+    if remainder > 0:
+        for index in range(len(normalized_units) - 1, -1, -1):
+            available = units - normalized_units[index]
+            if available <= 0:
+                continue
+            adjustment = min(remainder, available)
+            normalized_units[index] += adjustment
+            remainder -= adjustment
+            if remainder == 0:
+                break
+    elif remainder < 0:
+        remainder = -remainder
+        for index in range(len(normalized_units) - 1, -1, -1):
+            available = normalized_units[index]
+            if available <= 0:
+                continue
+            adjustment = min(remainder, available)
+            normalized_units[index] -= adjustment
+            remainder -= adjustment
+            if remainder == 0:
+                break
+
+    if remainder != 0:
+        return None
+
+    return [value / units for value in normalized_units]
 
 
 class AnimatedButton(QPushButton):
@@ -228,7 +280,7 @@ class FloatStepperWidget(QWidget):
     """Same look as StepperWidget but for float values (e.g. expert weights)."""
 
     def __init__(self, min_val: float, max_val: float, default_val: float,
-                 step: float = 0.05, decimals: int = 2, parent=None):
+                 step: float = _WEIGHT_STEP, decimals: int = _WEIGHT_DECIMALS, parent=None):
         super().__init__(parent)
         self._min = min_val
         self._max = max_val
@@ -313,6 +365,9 @@ class FloatStepperWidget(QWidget):
 
     def _set_value(self, v: float):
         self._edit.setText(f"{v:.{self._decimals}f}")
+
+    def set_value(self, v: float):
+        self._set_value(self._clamp(v))
 
     def value(self) -> float:
         try:
@@ -664,7 +719,7 @@ class MainWindow(QMainWindow):
 
         expert_count = self.expert_count_spin.value()
         factor_count = self.factor_count_spin.value()
-        default_weight = round(1.0 / expert_count, 2)
+        default_weights = _equal_weight_defaults(expert_count)
 
         card, card_outer = self._make_card(
             "factorsCard",
@@ -755,7 +810,13 @@ class MainWindow(QMainWindow):
             weight_lbl = QLabel("Weight")
             weight_lbl.setStyleSheet(row_lbl_style)
 
-            weight_input = FloatStepperWidget(0.0, 1.0, default_weight, step=0.05, decimals=2)
+            weight_input = FloatStepperWidget(
+                0.0,
+                1.0,
+                default_weights[i],
+                step=_WEIGHT_STEP,
+                decimals=_WEIGHT_DECIMALS,
+            )
             weight_input.setFixedWidth(90)
 
             self.expert_name_inputs.append(name_input)
@@ -806,7 +867,7 @@ class MainWindow(QMainWindow):
     def _validate_names_and_weights(self) -> tuple[list[str], list[str], list[float]] | None:
         factor_names = [field.text().strip() for field in self.factor_name_inputs]
         expert_names = [field.text().strip() for field in self.expert_name_inputs]
-        weights = [field.value() for field in self.expert_weight_inputs]
+        weights = _normalize_weight_inputs([field.value() for field in self.expert_weight_inputs])
 
         if any(not name for name in factor_names):
             QMessageBox.warning(self, "Input Error", "All factor names must be filled.")
@@ -820,9 +881,12 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Input Error", "Factor names must be unique.")
             return None
 
-        if abs(sum(weights) - 1.0) > 1e-8:
+        if weights is None:
             QMessageBox.warning(self, "Input Error", "Expert weights must sum to 1.")
             return None
+
+        for field, weight in zip(self.expert_weight_inputs, weights):
+            field.set_value(weight)
 
         return factor_names, expert_names, weights
 
@@ -1271,7 +1335,7 @@ class FloatStepperWidget(QWidget):
     """Same look as StepperWidget but for float values (e.g. expert weights)."""
 
     def __init__(self, min_val: float, max_val: float, default_val: float,
-                 step: float = 0.05, decimals: int = 2, parent=None):
+                 step: float = _WEIGHT_STEP, decimals: int = _WEIGHT_DECIMALS, parent=None):
         super().__init__(parent)
         self._min = min_val
         self._max = max_val
@@ -1356,6 +1420,9 @@ class FloatStepperWidget(QWidget):
 
     def _set_value(self, v: float):
         self._edit.setText(f"{v:.{self._decimals}f}")
+
+    def set_value(self, v: float):
+        self._set_value(self._clamp(v))
 
     def value(self) -> float:
         try:
@@ -1707,7 +1774,7 @@ class MainWindow(QMainWindow):
 
         expert_count = self.expert_count_spin.value()
         factor_count = self.factor_count_spin.value()
-        default_weight = round(1.0 / expert_count, 2)
+        default_weights = _equal_weight_defaults(expert_count)
 
         card, card_outer = self._make_card(
             "factorsCard",
@@ -1798,7 +1865,13 @@ class MainWindow(QMainWindow):
             weight_lbl = QLabel("Weight")
             weight_lbl.setStyleSheet(row_lbl_style)
 
-            weight_input = FloatStepperWidget(0.0, 1.0, default_weight, step=0.05, decimals=2)
+            weight_input = FloatStepperWidget(
+                0.0,
+                1.0,
+                default_weights[i],
+                step=_WEIGHT_STEP,
+                decimals=_WEIGHT_DECIMALS,
+            )
             weight_input.setFixedWidth(90)
 
             self.expert_name_inputs.append(name_input)
@@ -1849,7 +1922,7 @@ class MainWindow(QMainWindow):
     def _validate_names_and_weights(self) -> tuple[list[str], list[str], list[float]] | None:
         factor_names = [field.text().strip() for field in self.factor_name_inputs]
         expert_names = [field.text().strip() for field in self.expert_name_inputs]
-        weights = [field.value() for field in self.expert_weight_inputs]
+        weights = _normalize_weight_inputs([field.value() for field in self.expert_weight_inputs])
 
         if any(not name for name in factor_names):
             QMessageBox.warning(self, "Input Error", "All factor names must be filled.")
@@ -1863,9 +1936,12 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Input Error", "Factor names must be unique.")
             return None
 
-        if abs(sum(weights) - 1.0) > 1e-8:
+        if weights is None:
             QMessageBox.warning(self, "Input Error", "Expert weights must sum to 1.")
             return None
+
+        for field, weight in zip(self.expert_weight_inputs, weights):
+            field.set_value(weight)
 
         return factor_names, expert_names, weights
 

@@ -29,6 +29,8 @@ from PySide6.QtWidgets import (
 
 from .matrix_parsers import (
     NO_INFLUENCE_LABEL,
+    parse_standard_linguistic_labels_and_factor_names_from_excel_workbook_bytes,
+    parse_standard_linguistic_labels_and_factor_names_from_excel_bytes,
     parse_standard_linguistic_labels_from_excel_workbook_bytes,
     parse_standard_linguistic_labels_from_excel_bytes,
 )
@@ -79,6 +81,8 @@ class ExpertMatrixTab(QWidget):
         self._import_all_callback = import_all_callback
         self.cell_widgets: list[list[NoWheelComboBox]] = []
         self.import_message_label: QLabel | None = None
+        self._row_header_labels: list[QLabel] = []
+        self._col_header_labels: list[QLabel] = []
 
         self._build_ui()
 
@@ -149,6 +153,7 @@ class ExpertMatrixTab(QWidget):
             label.setFixedWidth(185)
             label.setFixedHeight(34)
             col_header_layout.addWidget(label)
+            self._col_header_labels.append(label)
 
         col_header_scroll.setWidget(col_header_content)
         matrix_grid.addWidget(col_header_scroll, 0, 1)
@@ -172,6 +177,7 @@ class ExpertMatrixTab(QWidget):
             label.setStyleSheet(header_style + " padding-right: 12px;")
             label.setFixedHeight(34)
             row_header_layout.addWidget(label)
+            self._row_header_labels.append(label)
 
         row_header_scroll.setWidget(row_header_content)
         matrix_grid.addWidget(row_header_scroll, 1, 0)
@@ -361,6 +367,41 @@ class ExpertMatrixTab(QWidget):
             }}
         """)
 
+    def update_factor_names(self, factor_names: list[str]) -> None:
+        if len(factor_names) != len(self.factor_names):
+            raise ValueError("Imported factor names must match the matrix size.")
+
+        cleaned_names = [str(name).strip() for name in factor_names]
+        if any(not name for name in cleaned_names):
+            raise ValueError("Imported factor names cannot be blank.")
+        if len({name.casefold() for name in cleaned_names}) != len(cleaned_names):
+            raise ValueError("Imported factor names must be unique.")
+
+        self.factor_names[:] = cleaned_names
+
+        for label, name in zip(self._col_header_labels, cleaned_names):
+            label.setText(name)
+
+        for label, name in zip(self._row_header_labels, cleaned_names):
+            label.setText(name)
+
+    def _propagate_factor_names_to_ancestors(self, factor_names: list[str]) -> None:
+        widget = self.parentWidget()
+
+        while widget is not None:
+            inputs = getattr(widget, "factor_name_inputs", None)
+            if isinstance(inputs, list) and len(inputs) == len(factor_names):
+                for field, name in zip(inputs, factor_names):
+                    if hasattr(field, "setText"):
+                        field.setText(name)
+                return
+
+            widget = widget.parentWidget()
+
+    def _apply_imported_factor_names(self, factor_names: list[str]) -> None:
+        self.update_factor_names(factor_names)
+        self._propagate_factor_names_to_ancestors(self.factor_names)
+
     def set_import_message(self, message: str | None) -> None:
         if self.import_message_label is None:
             return
@@ -395,10 +436,12 @@ class ExpertMatrixTab(QWidget):
 
         try:
             with open(file_path, "rb") as handle:
-                matrix = parse_standard_linguistic_labels_from_excel_bytes(
+                factor_names, matrix = parse_standard_linguistic_labels_and_factor_names_from_excel_bytes(
                     file_bytes=handle.read(),
                     expected_size=len(self.factor_names),
                 )
+            if factor_names is not None:
+                self._apply_imported_factor_names(factor_names)
             self.set_matrix(matrix)
         except ValueError as exc:
             self.set_import_message(f"Import failed: {exc}")
@@ -476,6 +519,20 @@ class MatrixEditorWidget(QWidget):
 
     def _clear_import_messages(self) -> None:
         self._set_import_message_for_all_tabs("")
+
+    def _apply_imported_factor_names(self, factor_names: list[str]) -> None:
+        for tab in self.tabs:
+            tab.update_factor_names(factor_names)
+
+        widget = self.parentWidget()
+        while widget is not None:
+            inputs = getattr(widget, "factor_name_inputs", None)
+            if isinstance(inputs, list) and len(inputs) == len(factor_names):
+                for field, name in zip(inputs, factor_names):
+                    if hasattr(field, "setText"):
+                        field.setText(name)
+                break
+            widget = widget.parentWidget()
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -565,11 +622,13 @@ class MatrixEditorWidget(QWidget):
 
         try:
             with open(file_path, "rb") as handle:
-                workbook_matrices = parse_standard_linguistic_labels_from_excel_workbook_bytes(
+                factor_names, workbook_matrices = parse_standard_linguistic_labels_and_factor_names_from_excel_workbook_bytes(
                     file_bytes=handle.read(),
                     expected_size=len(self.factor_names),
                     expected_sheet_count=len(self.tabs),
                 )
+            if factor_names is not None:
+                self._apply_imported_factor_names(factor_names)
             self._apply_workbook_matrices(workbook_matrices)
         except ValueError as exc:
             self._set_import_message_for_all_tabs(f"Import failed: {exc}")

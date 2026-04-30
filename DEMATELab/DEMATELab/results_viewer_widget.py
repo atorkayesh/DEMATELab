@@ -506,12 +506,12 @@ class ResultsViewerWidget(QWidget):
         top_prominence = float(np.max(crisp_prominence))
         rel_idx = int(np.argmax(np.abs(crisp_relation)))
         strongest_rel = float(crisp_relation[rel_idx])
-        strongest_rel_str = f"+{strongest_rel:.4f}" if strongest_rel >= 0 else f"{strongest_rel:.4f}"
+        strongest_rel_str = f"+{strongest_rel:.2f}" if strongest_rel >= 0 else f"{strongest_rel:.2f}"
 
         _stat_cards = [
             ("Driving Factors",   str(n_cause),                       "Majority of factors act as system drivers."),
             ("Dependent Factors", str(n_effect),                      "Primarily influenced factor in the system."),
-            ("Top Prominence",    f"{top_prominence:.4f}",            "Highest overall importance among factors."),
+            ("Top Prominence",    f"{top_prominence:.2f}",            "Highest overall importance among factors."),
             ("Strongest Relation", strongest_rel_str,                 "Strongest net driving influence detected."),
         ]
 
@@ -723,11 +723,11 @@ class ResultsViewerWidget(QWidget):
                 row_w.setStyleSheet("background: transparent;")
                 row_h = QHBoxLayout(row_w)
                 row_h.setContentsMargins(0, 4, 0, 4)
-                row_h.setSpacing(8)
+                row_h.setSpacing(4)
 
                 # factor name
                 name_lbl = QLabel(f)
-                name_lbl.setFixedWidth(28)
+                name_lbl.setFixedWidth(24)
                 name_lbl.setStyleSheet("font-family: 'Inter'; font-size: 10px; font-weight: 600; color: #2d4d4c; background: transparent;")
 
                 # bar
@@ -743,14 +743,14 @@ class ResultsViewerWidget(QWidget):
                 """)
 
                 # prominence value
-                p_lbl = QLabel(f"P {p_val:.4f}")
-                p_lbl.setFixedWidth(68)
+                p_lbl = QLabel(f"P {p_val:.2f}")
+                p_lbl.setFixedWidth(56)
                 p_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 p_lbl.setStyleSheet("font-family: 'Inter'; font-size: 10px; font-weight: 400; color: #9a9a9a; background: transparent;")
 
                 # relation value
-                r_lbl = QLabel(f"R {r_sign}")
-                r_lbl.setFixedWidth(74)
+                r_lbl = QLabel(f"R {float(r_val):+.2f}")
+                r_lbl.setFixedWidth(62)
                 r_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 r_lbl.setStyleSheet("font-family: 'Inter'; font-size: 10px; font-weight: 400; color: #9a9a9a; background: transparent;")
 

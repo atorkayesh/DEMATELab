@@ -78,6 +78,7 @@ class ExpertMatrixTab(QWidget):
         )
         self._import_all_callback = import_all_callback
         self.cell_widgets: list[list[NoWheelComboBox]] = []
+        self.import_message_label: QLabel | None = None
 
         self._build_ui()
 
@@ -270,6 +271,21 @@ class ExpertMatrixTab(QWidget):
         import_row.addStretch()
         outer_layout.addLayout(import_row)
 
+        self.import_message_label = QLabel("")
+        self.import_message_label.setWordWrap(True)
+        self.import_message_label.setVisible(False)
+        self.import_message_label.setStyleSheet("""
+            QLabel {
+                font-family: 'Inter';
+                font-size: 11px;
+                font-weight: 500;
+                color: #c62828;
+                background: transparent;
+                padding-top: 4px;
+            }
+        """)
+        outer_layout.addWidget(self.import_message_label)
+
     def _create_import_button(self, text: str) -> QPushButton:
         button = QPushButton(text)
         button.setCursor(Qt.PointingHandCursor)
@@ -345,6 +361,17 @@ class ExpertMatrixTab(QWidget):
             }}
         """)
 
+    def set_import_message(self, message: str | None) -> None:
+        if self.import_message_label is None:
+            return
+
+        text = (message or "").strip()
+        self.import_message_label.setText(text)
+        self.import_message_label.setVisible(bool(text))
+
+    def clear_import_message(self) -> None:
+        self.set_import_message("")
+
     def _import_matrix_from_xlsx(self) -> None:
         if not self._supports_standard_xlsx_import:
             QMessageBox.information(
@@ -364,6 +391,8 @@ class ExpertMatrixTab(QWidget):
         if not file_path:
             return
 
+        self.clear_import_message()
+
         try:
             with open(file_path, "rb") as handle:
                 matrix = parse_standard_linguistic_labels_from_excel_bytes(
@@ -371,8 +400,10 @@ class ExpertMatrixTab(QWidget):
                     expected_size=len(self.factor_names),
                 )
             self.set_matrix(matrix)
+        except ValueError as exc:
+            self.set_import_message(f"Import failed: {exc}")
         except Exception as exc:
-            QMessageBox.critical(self, "Import Error", str(exc))
+            self.set_import_message(f"Import failed: {exc}")
 
     def set_matrix(self, matrix: list[list[str]]) -> None:
         expected_size = len(self.factor_names)
@@ -438,6 +469,13 @@ class MatrixEditorWidget(QWidget):
         self.tabs: list[ExpertMatrixTab] = []
 
         self._build_ui()
+
+    def _set_import_message_for_all_tabs(self, message: str | None) -> None:
+        for tab in self.tabs:
+            tab.set_import_message(message)
+
+    def _clear_import_messages(self) -> None:
+        self._set_import_message_for_all_tabs("")
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -523,6 +561,8 @@ class MatrixEditorWidget(QWidget):
         if not file_path:
             return
 
+        self._clear_import_messages()
+
         try:
             with open(file_path, "rb") as handle:
                 workbook_matrices = parse_standard_linguistic_labels_from_excel_workbook_bytes(
@@ -531,8 +571,12 @@ class MatrixEditorWidget(QWidget):
                     expected_sheet_count=len(self.tabs),
                 )
             self._apply_workbook_matrices(workbook_matrices)
+        except ValueError as exc:
+            self._set_import_message_for_all_tabs(f"Import failed: {exc}")
         except Exception as exc:
-            QMessageBox.critical(self, "Import Error", str(exc))
+            self._set_import_message_for_all_tabs(f"Import failed: {exc}")
+        else:
+            self._clear_import_messages()
 
     def _apply_workbook_matrices(
         self,

@@ -95,7 +95,7 @@ def _build_edges(
                 continue
 
             weight = float(total_matrix[i, j])
-            if weight >= threshold:
+            if weight > threshold:
                 edges.append((factors[i], factors[j], weight))
 
     return edges
@@ -145,6 +145,7 @@ def plot_dematel_influence_map(
     style: DematelPlotStyle | None = None,
     save_path: str | Path | None = None,
     show: bool = True,
+    ax=None,
 ):
     """
     Plot DEMATEL influence map from computed DEMATEL outputs.
@@ -154,7 +155,7 @@ def plot_dematel_influence_map(
         y-axis = relation
 
     Edges:
-        total_matrix[i, j] >= threshold
+        total_matrix[i, j] > threshold
     """
     _validate_plot_input(data)
     style = style or DematelPlotStyle()
@@ -162,7 +163,11 @@ def plot_dematel_influence_map(
     positions = _build_positions(data.factors, data.prominence, data.relation)
     edges = _build_edges(data.factors, data.total_matrix, data.threshold)
 
-    fig, ax = plt.subplots(figsize=style.figsize)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=style.figsize)
+    else:
+        fig = ax.figure
+        ax.clear()
 
     # Node colors
     node_colors = [
@@ -201,6 +206,7 @@ def plot_dematel_influence_map(
 
     ax.set_xlabel("Prominence")
     ax.set_ylabel("Relation")
+    ax.margins(0.12)
 
     # Draw edges
     if edges:
@@ -275,22 +281,22 @@ def plot_dematel_influence_map(
                     )
 
     legend_items = [
-        Patch(color=style.cause_color, label="Cause group"),
-        Patch(color=style.effect_color, label="Effect group"),
+        Patch(color=style.cause_color, label="Driving determinant"),
+        Patch(color=style.effect_color, label="Influenced determinant"),
     ]
     ax.legend(handles=legend_items, loc="best")
 
     if style.show_grid:
         ax.grid(True, linestyle=":", alpha=style.grid_alpha)
 
-    plt.tight_layout()
+    fig.tight_layout()
 
     if save_path is not None:
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_path, dpi=style.dpi, bbox_inches="tight")
+        fig.savefig(save_path, dpi=style.dpi, bbox_inches="tight")
 
-    if show:
+    if show and ax is None:
         plt.show()
 
     return fig, ax

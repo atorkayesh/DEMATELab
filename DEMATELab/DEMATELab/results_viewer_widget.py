@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
+from .dematel_visualization import DematelPlotInput, DematelPlotStyle, plot_dematel_influence_map
 from .llm_worker import ExplanationWorker
 
 
@@ -953,49 +954,22 @@ class ResultsViewerWidget(QWidget):
         total_matrix = _to_numeric_2d_array(total_matrix_raw)
         ax = self.causal_plot_tab.ax
 
-        colors = ["green" if val >= 0 else "red" for val in relation]
-
-        ax.clear()
-        ax.scatter(prominence, relation, s=700, c=colors, edgecolors="black")
-
-        for i, factor in enumerate(factors):
-            ax.text(
-                float(prominence[i]),
-                float(relation[i]),
-                factor,
-                ha="center",
-                va="center",
-                color="white",
-                fontweight="bold",
-            )
-
         threshold = getattr(self.result, "threshold_value", None)
         if threshold is None:
             threshold = float(np.mean(total_matrix))
 
-        for i in range(len(factors)):
-            for j in range(len(factors)):
-                if i == j:
-                    continue
-                weight = float(total_matrix[i, j])
-                if weight >= threshold:
-                    ax.annotate(
-                        "",
-                        xy=(prominence[j], relation[j]),
-                        xytext=(prominence[i], relation[i]),
-                        arrowprops=dict(
-                            arrowstyle="->",
-                            lw=1.0 + weight,
-                            alpha=0.45,
-                        ),
-                    )
-
-        ax.axhline(0, linestyle="--", linewidth=1)
-        ax.axvline(float(np.mean(prominence)), linestyle=":", linewidth=1)
-        ax.set_title("Cause-Effect Diagram", fontfamily="Inter", fontsize=10, fontweight="normal", color="#2d4d4c")
-        ax.set_xlabel("Prominence (R + C)")
-        ax.set_ylabel("Relation (R - C)")
-        ax.grid(True, alpha=0.3)
+        plot_dematel_influence_map(
+            DematelPlotInput(
+                factors=factors,
+                prominence=prominence,
+                relation=relation,
+                total_matrix=total_matrix,
+                threshold=float(threshold),
+            ),
+            style=DematelPlotStyle(figsize=(8, 6), dpi=120),
+            show=False,
+            ax=ax,
+        )
 
         self.causal_plot_tab.figure.tight_layout()
         self.causal_plot_tab.canvas.draw()

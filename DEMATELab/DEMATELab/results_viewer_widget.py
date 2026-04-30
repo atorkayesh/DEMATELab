@@ -179,6 +179,25 @@ class PlotTab(QWidget):
         self.figure.savefig(file_path, format="png", dpi=300, bbox_inches="tight")
 
 
+def _save_widget_to_png(widget: QWidget, title: str, default_name: str) -> None:
+    file_path, _ = QFileDialog.getSaveFileName(
+        widget,
+        f"Save {title} as PNG",
+        default_name,
+        "PNG Files (*.png)",
+    )
+    if not file_path:
+        return
+
+    if not file_path.lower().endswith(".png"):
+        file_path += ".png"
+
+    widget.ensurePolished()
+    widget.repaint()
+    pixmap = widget.grab()
+    pixmap.save(file_path, "PNG")
+
+
 class ResultsViewerWidget(QWidget):
     def __init__(self, result, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -187,6 +206,7 @@ class ResultsViewerWidget(QWidget):
         self.worker_thread: QThread | None = None
         self.worker: ExplanationWorker | None = None
 
+        self.summary_tab: QWidget | None = None
         self.causal_plot_tab: PlotTab | None = None
         self.heatmap_plot_tab: PlotTab | None = None
 
@@ -266,6 +286,11 @@ class ResultsViewerWidget(QWidget):
         self.export_xlsx_button.setCursor(Qt.PointingHandCursor)
         self.export_xlsx_button.clicked.connect(self._export_results_to_xlsx)
 
+        self.export_summary_png_button = QPushButton("Export Summary to PNG")
+        self.export_summary_png_button.setStyleSheet(_export_btn_style)
+        self.export_summary_png_button.setCursor(Qt.PointingHandCursor)
+        self.export_summary_png_button.clicked.connect(self._export_summary_png)
+
         self.export_causal_pdf_button = QPushButton("Export Causal Diagram to PNG")
         self.export_causal_pdf_button.setStyleSheet(_export_btn_style)
         self.export_causal_pdf_button.setCursor(Qt.PointingHandCursor)
@@ -277,6 +302,7 @@ class ResultsViewerWidget(QWidget):
         self.export_heatmap_pdf_button.clicked.connect(self._export_heatmap_png)
 
         _export_bar_layout.addWidget(self.export_xlsx_button)
+        _export_bar_layout.addWidget(self.export_summary_png_button)
         _export_bar_layout.addWidget(self.export_causal_pdf_button)
         _export_bar_layout.addWidget(self.export_heatmap_pdf_button)
 
@@ -745,6 +771,7 @@ class ResultsViewerWidget(QWidget):
         main_layout.addWidget(left,  4)
         main_layout.addWidget(right, 8)
 
+        self.summary_tab = widget
         return widget
 
     def _build_summary_text(self) -> str:
@@ -1296,6 +1323,13 @@ class ResultsViewerWidget(QWidget):
 
         except Exception as exc:
             QMessageBox.critical(self, "Export Error", f"Failed to export XLSX:\n{exc}")
+
+    def _export_summary_png(self) -> None:
+        if self.summary_tab is None:
+            QMessageBox.warning(self, "Export Warning", "Summary tab is not available.")
+            return
+
+        _save_widget_to_png(self.summary_tab, "Summary", "summary.png")
 
     def _export_causal_png(self) -> None:
         if self.causal_plot_tab is None:

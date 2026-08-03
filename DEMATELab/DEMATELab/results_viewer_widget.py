@@ -301,15 +301,21 @@ class ResultsViewerWidget(QWidget):
         self.export_causal_pdf_button.setCursor(Qt.PointingHandCursor)
         self.export_causal_pdf_button.clicked.connect(self._export_causal_png)
 
-        self.export_heatmap_pdf_button = QPushButton("Export Heatmap to PNG")
-        self.export_heatmap_pdf_button.setStyleSheet(_export_btn_style)
-        self.export_heatmap_pdf_button.setCursor(Qt.PointingHandCursor)
-        self.export_heatmap_pdf_button.clicked.connect(self._export_heatmap_png)
+        self.export_heatmap_png_button = QPushButton("Export Standard Heatmap to PNG")
+        self.export_heatmap_png_button.setStyleSheet(_export_btn_style)
+        self.export_heatmap_png_button.setCursor(Qt.PointingHandCursor)
+        self.export_heatmap_png_button.clicked.connect(self._export_standard_heatmap_png)
+
+        self.export_cluster_heatmap_png_button = QPushButton("Export Cluster Heatmap to PNG")
+        self.export_cluster_heatmap_png_button.setStyleSheet(_export_btn_style)
+        self.export_cluster_heatmap_png_button.setCursor(Qt.PointingHandCursor)
+        self.export_cluster_heatmap_png_button.clicked.connect(self._export_cluster_heatmap_png)
 
         _export_bar_layout.addWidget(self.export_xlsx_button)
         _export_bar_layout.addWidget(self.export_summary_png_button)
         _export_bar_layout.addWidget(self.export_causal_pdf_button)
-        _export_bar_layout.addWidget(self.export_heatmap_pdf_button)
+        _export_bar_layout.addWidget(self.export_heatmap_png_button)
+        _export_bar_layout.addWidget(self.export_cluster_heatmap_png_button)
 
         export_row.addWidget(_export_bar)
         export_row.addStretch()
@@ -1040,7 +1046,7 @@ class ResultsViewerWidget(QWidget):
         self._render_heatmap_tab()
         return widget
 
-    def _render_heatmap_tab(self, *_args) -> None:
+    def _render_heatmap_tab(self, *_args, cluster_mode: bool | None = None) -> None:
         if self.heatmap_plot_tab is None:
             return
 
@@ -1055,7 +1061,8 @@ class ResultsViewerWidget(QWidget):
         ax = self.heatmap_plot_tab.figure.add_subplot(111)
         self.heatmap_plot_tab.ax = ax
 
-        cluster_mode = bool(self.heatmap_cluster_checkbox and self.heatmap_cluster_checkbox.isChecked())
+        if cluster_mode is None:
+            cluster_mode = bool(self.heatmap_cluster_checkbox and self.heatmap_cluster_checkbox.isChecked())
 
         if cluster_mode:
             try:
@@ -1417,8 +1424,30 @@ class ResultsViewerWidget(QWidget):
             return
         self.causal_plot_tab.save_png("causal_diagram.png")
 
-    def _export_heatmap_png(self) -> None:
+    def _save_heatmap_png(self, *, cluster_mode: bool, default_name: str) -> None:
         if self.heatmap_plot_tab is None:
             QMessageBox.warning(self, "Export Warning", "Heatmap is not available.")
             return
-        self.heatmap_plot_tab.save_png("heatmap.png")
+
+        previous_state = bool(self.heatmap_cluster_checkbox and self.heatmap_cluster_checkbox.isChecked())
+
+        if self.heatmap_cluster_checkbox is not None:
+            was_blocked = self.heatmap_cluster_checkbox.blockSignals(True)
+            self.heatmap_cluster_checkbox.setChecked(cluster_mode)
+            self.heatmap_cluster_checkbox.blockSignals(was_blocked)
+
+        self._render_heatmap_tab(cluster_mode=cluster_mode)
+        self.heatmap_plot_tab.save_png(default_name)
+
+        if self.heatmap_cluster_checkbox is not None:
+            was_blocked = self.heatmap_cluster_checkbox.blockSignals(True)
+            self.heatmap_cluster_checkbox.setChecked(previous_state)
+            self.heatmap_cluster_checkbox.blockSignals(was_blocked)
+
+        self._render_heatmap_tab(cluster_mode=previous_state)
+
+    def _export_standard_heatmap_png(self) -> None:
+        self._save_heatmap_png(cluster_mode=False, default_name="heatmap_standard.png")
+
+    def _export_cluster_heatmap_png(self) -> None:
+        self._save_heatmap_png(cluster_mode=True, default_name="heatmap_cluster.png")

@@ -281,8 +281,8 @@ def plot_dematel_influence_map(
                     )
 
     legend_items = [
-        Patch(color=style.cause_color, label="Driving determinant"),
-        Patch(color=style.effect_color, label="Influenced determinant"),
+        Patch(color=style.cause_color, label="Cause factor"),
+        Patch(color=style.effect_color, label="Effect factor"),
     ]
     ax.legend(handles=legend_items, loc="best")
 

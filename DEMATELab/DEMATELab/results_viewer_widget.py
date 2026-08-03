@@ -1090,22 +1090,8 @@ class ResultsViewerWidget(QWidget):
                 color="#2d4d4c",
             )
 
-            for i in range(len(factors)):
-                for j in range(len(factors)):
-                    label = clustering_result.labels_named[i, j]
-                    ax.text(
-                        j,
-                        i,
-                        label,
-                        ha="center",
-                        va="center",
-                        fontsize=7,
-                        color="#1e3333",
-                    )
-
             cbar = self.heatmap_plot_tab.figure.colorbar(im, ax=ax, ticks=np.arange(5))
             cbar.set_ticklabels([NO_INFLUENCE_LABEL, *CLUSTER_NAMES])
-            cbar.set_label("Cluster Label")
         else:
             im = ax.imshow(matrix)
             ax.set_title(

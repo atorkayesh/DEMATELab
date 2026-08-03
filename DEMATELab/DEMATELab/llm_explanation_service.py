@@ -40,6 +40,12 @@ def build_result_payload(result) -> dict:
         "threshold_value": result.threshold_value,
         "prominence": [float(x) for x in result.prominence],
         "relation": [float(x) for x in result.relation],
+        "metric_definitions": {
+            "prominence": "R+C, used only for overall importance/centrality",
+            "relation": "R-C, used for causal direction",
+            "cause_rule": "relation >= 0",
+            "effect_rule": "relation < 0",
+        },
     }
 
     if hasattr(result, "fuzzy_direct_matrix"):
@@ -60,18 +66,27 @@ def build_result_payload(result) -> dict:
 
 def build_prompt(payload: dict) -> str:
     return f"""
-You are analytical thinker. Explain the following results of DEMATEL in several clear academic-style paragraphs.
+You are an analytical thinker. Explain the following DEMATEL results in several clear academic-style paragraphs.
 
 Your explanation should:
 - describe the overall structure of the system,
-- explain which factors belong to the cause group and why,
-- explain which factors belong to the effect group and why,
-- comment on the most influential factors based on prominence and relation,
+- explain which factors belong to the cause group and which belong to the effect group,
+- use the relation value (R-C) to determine causal direction,
+- use prominence (R+C) only to describe overall importance or centrality,
+- do not infer cause/effect from prominence or from high/low prominence scores,
+- comment on the most influential factors by separating importance (prominence) from direction (relation),
 - explain what the threshold means for interpreting the system,
-- explain total relation matrix based on the threshold and how factors affect each other,
+- explain the total relation matrix and how factors affect each other,
 - avoid bullet points,
 - avoid repeating the raw numbers too much,
 - stay grounded in the data only.
+
+Method rules:
+- Cause group means relation >= 0.
+- Effect group means relation < 0.
+- Prominence measures importance, not causal direction.
+- If a factor has high prominence but negative relation, describe it as important but effect-oriented.
+- If a factor has low prominence but positive relation, describe it as less central but cause-oriented.
 
 Data:
 {json.dumps(payload, indent=2, ensure_ascii=False)}

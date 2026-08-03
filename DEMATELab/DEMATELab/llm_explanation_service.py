@@ -20,6 +20,7 @@ SUPPORTED_ENGINES = {
     "OpenRouter",
     "Gemini",
     "OpenAI",
+    "Azure OpenAI",
 }
 
 
@@ -28,7 +29,10 @@ DEFAULT_MODELS = {
     "OpenRouter": "openai/gpt-4o-mini",
     "Gemini": LLM_MODEL,
     "OpenAI": "gpt-4o-mini",
+    "Azure OpenAI": "gpt-4o-mini",
 }
+
+AZURE_OPENAI_API_VERSION = "2024-06-01"
 
 
 def build_result_payload(result) -> dict:
@@ -138,6 +142,59 @@ def _generate_with_openai_compatible(
         raise ValueError("Unexpected response format from the selected LLM provider.") from exc
 
 
+def _generate_with_azure_openai(
+    *,
+    endpoint: str,
+    api_key: str,
+    model: str,
+    prompt: str,
+) -> str:
+    endpoint = endpoint.strip().rstrip("/")
+    if not endpoint:
+        raise ValueError("Azure OpenAI endpoint is required.")
+
+    system_message = {
+        "role": "system",
+        "content": "You are an expert academic analyst interpreting DEMATEL results.",
+    }
+    user_message = {
+        "role": "user",
+        "content": prompt,
+    }
+
+    if endpoint.endswith("/openai/v1"):
+        url = f"{endpoint}/chat/completions"
+        payload = {
+            "model": model,
+            "messages": [system_message, user_message],
+            "temperature": 0.4,
+        }
+    else:
+        url = (
+            f"{endpoint}/openai/deployments/{model}/chat/completions"
+            f"?api-version={AZURE_OPENAI_API_VERSION}"
+        )
+        payload = {
+            "messages": [system_message, user_message],
+            "temperature": 0.4,
+        }
+
+    headers = {
+        "api-key": api_key.strip(),
+        "Content-Type": "application/json",
+    }
+
+    with httpx.Client(timeout=120.0) as client:
+        response = client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+    try:
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception as exc:
+        raise ValueError("Unexpected response format from Azure OpenAI.") from exc
+
+
 def _generate_with_gemini(
     *,
     api_key: str,
@@ -163,6 +220,7 @@ def generate_dematel_explanation(
     engine: str,
     api_key: str,
     model: str | None = None,
+    endpoint: str | None = None,
 ) -> str:
     if not engine or engine not in SUPPORTED_ENGINES:
         raise ValueError(f"Unsupported engine: {engine}")
@@ -202,6 +260,16 @@ def generate_dematel_explanation(
     if engine == "OpenAI":
         return _generate_with_openai_compatible(
             base_url="https://api.openai.com/v1/chat/completions",
+            api_key=api_key,
+            model=selected_model,
+            prompt=prompt,
+        )
+
+    if engine == "Azure OpenAI":
+        if not endpoint or not endpoint.strip():
+            raise ValueError("Azure OpenAI endpoint is required.")
+        return _generate_with_azure_openai(
+            endpoint=endpoint,
             api_key=api_key,
             model=selected_model,
             prompt=prompt,

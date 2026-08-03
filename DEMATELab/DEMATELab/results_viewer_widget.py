@@ -18,6 +18,8 @@ from PySide6.QtWidgets import QToolTip
 from PySide6.QtWidgets import (
     QComboBox,
     QCheckBox,
+    QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -46,7 +48,7 @@ from .constants import CLUSTER_NAMES, NO_INFLUENCE_LABEL
 from .llm_worker import ExplanationWorker
 
 
-SUPPORTED_ENGINES = ["Gemini", "OpenAI", "OpenRouter", "Groq"]
+SUPPORTED_ENGINES = ["Gemini", "OpenAI", "Azure OpenAI", "OpenRouter", "Groq"]
 
 
 def _to_numeric_2d_array(matrix) -> np.ndarray:
@@ -209,6 +211,7 @@ class ResultsViewerWidget(QWidget):
 
         self.worker_thread: QThread | None = None
         self.worker: ExplanationWorker | None = None
+        self.azure_openai_endpoint: str = ""
 
         self.summary_tab: QWidget | None = None
         self.causal_plot_tab: PlotTab | None = None
@@ -1242,6 +1245,7 @@ class ResultsViewerWidget(QWidget):
     _ENGINE_DEFAULT_MODELS: dict[str, str] = {
         "Gemini": "gemini-2.5-pro",
         "OpenAI": "gpt-4o-mini",
+        "Azure OpenAI": "gpt-4o-mini",
         "OpenRouter": "openai/gpt-4o-mini",
         "Groq": "llama-3.3-70b-versatile",
     }
@@ -1252,6 +1256,85 @@ class ResultsViewerWidget(QWidget):
 
     def _on_engine_changed(self, engine: str) -> None:
         self._set_default_model(engine)
+        if engine == "Azure OpenAI":
+            self.model_input.setPlaceholderText("Enter the Azure deployment name")
+        else:
+            self.model_input.setPlaceholderText("Leave blank to use the default model")
+
+    def _prompt_azure_openai_endpoint(self) -> str | None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Azure OpenAI Endpoint")
+        dialog.setModal(True)
+        dialog.setMinimumWidth(520)
+        dialog.setStyleSheet("""
+            QDialog {
+                background: #f7fbfb;
+            }
+            QLabel {
+                font-family: 'Inter';
+                font-size: 12px;
+                color: #1e3333;
+                background: transparent;
+            }
+            QLineEdit {
+                font-family: 'Inter';
+                font-size: 13px;
+                color: #1e3333;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 6px 10px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #bcdcdc;
+            }
+            QDialogButtonBox {
+                background: transparent;
+            }
+            QPushButton {
+                font-family: 'Inter';
+                font-size: 13px;
+                color: #2d4d4c;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 6px 18px;
+                min-width: 88px;
+            }
+            QPushButton:hover {
+                color: #1e3333;
+            }
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+
+        prompt = QLabel(
+            "Enter your Azure OpenAI endpoint, for example:\n"
+            "https://YOUR-RESOURCE-NAME.openai.azure.com"
+        )
+        prompt.setWordWrap(True)
+        layout.addWidget(prompt)
+
+        endpoint_input = QLineEdit()
+        endpoint_input.setText(self.azure_openai_endpoint)
+        endpoint_input.setPlaceholderText("https://YOUR-RESOURCE-NAME.openai.azure.com")
+        layout.addWidget(endpoint_input)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        if dialog.exec() != QDialog.Accepted:
+            return None
+
+        endpoint = endpoint_input.text().strip()
+        if not endpoint:
+            return None
+
+        return endpoint
 
     def _start_ai_explanation(self) -> None:
         engine = self.engine_combo.currentText().strip()
@@ -1260,6 +1343,14 @@ class ResultsViewerWidget(QWidget):
         if not api_key:
             self.ai_status_label.setText("Please enter an API key.")
             return
+
+        endpoint = None
+        if engine == "Azure OpenAI":
+            endpoint = self._prompt_azure_openai_endpoint()
+            if not endpoint:
+                self.ai_status_label.setText("Azure OpenAI endpoint is required.")
+                return
+            self.azure_openai_endpoint = endpoint
 
         self.generate_ai_button.setEnabled(False)
         self.ai_status_label.setText("Generating explanation...")
@@ -1273,6 +1364,7 @@ class ResultsViewerWidget(QWidget):
             engine=engine,
             api_key=api_key,
             model=model,
+            endpoint=endpoint,
         )
         self.worker.moveToThread(self.worker_thread)
 

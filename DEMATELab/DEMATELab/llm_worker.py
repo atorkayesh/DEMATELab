@@ -18,12 +18,20 @@ class ExplanationWorker(QObject):
     finished = Signal(str)
     error = Signal(str)
 
-    def __init__(self, result, engine: str, api_key: str, model: str | None = None):
+    def __init__(
+        self,
+        result,
+        engine: str,
+        api_key: str,
+        model: str | None = None,
+        endpoint: str | None = None,
+    ):
         super().__init__()
         self.result = result
         self.engine = engine
         self.api_key = api_key
         self.model = model or self._default_model(engine)
+        self.endpoint = endpoint
 
     def _default_model(self, engine: str) -> str:
         defaults = {
@@ -31,6 +39,7 @@ class ExplanationWorker(QObject):
             "OpenAI": "gpt-4o-mini",
             "OpenRouter": "openai/gpt-4o-mini",
             "Groq": "llama3-8b-8192",
+            "Azure OpenAI": "gpt-4o-mini",
         }
         return defaults.get(engine, "")
 
@@ -42,6 +51,7 @@ class ExplanationWorker(QObject):
                 engine=self.engine,
                 api_key=self.api_key,
                 model=self.model,
+                endpoint=self.endpoint,
             )
             self.finished.emit(explanation)
         except Exception as exc:

@@ -12,113 +12,147 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import ListedColormap
+from matplotlib.colors import BoundaryNorm, ListedColormap
 from sklearn.cluster import KMeans
 
-from .constants import CLUSTER_NAMES, ClusteringMethod
+from .constants import CLUSTER_NAMES, ClusteringMethod, NO_INFLUENCE_LABEL
+
+
+_CLUSTER_COLOR_MAP = ListedColormap(
+    [
+        "#d9d9d9",  # No influence
+        "#d9f0d3",  # Low
+        "#addd8e",  # Low-to-Medium
+        "#fdae61",  # Medium-to-High
+        "#d73027",  # High
+    ]
+)
+
+_CLUSTER_BOUNDARIES = BoundaryNorm(np.arange(-0.5, 5.5, 1), _CLUSTER_COLOR_MAP.N)
 
 
 @dataclass(slots=True)
 class ClusteringResult:
+    total_matrix: np.ndarray
     labels_numeric: np.ndarray
-    labels_named: list[str]
-    ordered_indices: np.ndarray
-    ordered_matrix: np.ndarray
-    ordered_factor_names: list[str]
-    cluster_name_by_factor: dict[str, str]
+    labels_named: np.ndarray
+    cluster_centers: np.ndarray
     cluster_rank_map: dict[int, str]
+    factor_names: list[str] | None = None
+
+    @property
+    def label_matrix(self) -> np.ndarray:
+        return self.labels_named
+
+
+def _normalize_method(method: str | ClusteringMethod) -> str:
+    return method.value if hasattr(method, "value") else str(method).strip().lower().replace(" ", "_")
+
+
+def _validate_total_matrix(total_matrix: np.ndarray) -> np.ndarray:
+    matrix = np.asarray(total_matrix, dtype=float)
+
+    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("total_matrix must be a square matrix.")
+
+    if matrix.shape[0] == 0:
+        raise ValueError("total_matrix cannot be empty.")
+
+    return matrix
 
 
 def _fit_clustering(
-    total_matrix: np.ndarray,
+    cell_values: np.ndarray,
     method: str | ClusteringMethod = ClusteringMethod.KMEANS,
     random_state: int = 42,
-) -> np.ndarray:
-    n_clusters = 4
-    method = method.value if hasattr(method, "value") else str(method).strip().lower().replace(" ", "_")
+) -> tuple[np.ndarray, np.ndarray]:
+    method_name = _normalize_method(method)
 
-    if total_matrix.ndim != 2 or total_matrix.shape[0] != total_matrix.shape[1]:
-        raise ValueError("total_matrix must be a square matrix.")
+    if method_name != ClusteringMethod.KMEANS.value:
+        raise ValueError(f"Unsupported clustering method: {method_name}. Only 'kmeans' is supported.")
 
-    n_items = total_matrix.shape[0]
-    if n_items < n_clusters:
-        raise ValueError("At least 4 factors are required for 4-group clustering.")
+    samples = np.asarray(cell_values, dtype=float).reshape(-1, 1)
 
-    if method != ClusteringMethod.KMEANS.value:
-        raise ValueError(f"Unsupported clustering method: {method}. Only 'kmeans' is supported.")
+    if samples.shape[0] < 4:
+        raise ValueError("At least 4 off-diagonal matrix values are required for 4-group clustering.")
 
-    model = KMeans(n_clusters=n_clusters, random_state=random_state, n_init="auto")
-    return model.fit_predict(total_matrix)
+    model = KMeans(n_clusters=4, random_state=random_state, n_init="auto")
+    labels_numeric = model.fit_predict(samples)
+
+    return labels_numeric, model.cluster_centers_.ravel()
 
 
-def _rank_clusters_by_intensity(
-    total_matrix: np.ndarray,
-    labels_numeric: np.ndarray,
-) -> dict[int, str]:
-    unique_clusters = sorted(set(labels_numeric.tolist()))
-    cluster_scores: list[tuple[int, float]] = []
-
-    row_means = total_matrix.mean(axis=1)
-
-    for cluster_id in unique_clusters:
-        member_mask = labels_numeric == cluster_id
-        score = float(row_means[member_mask].mean())
-        cluster_scores.append((cluster_id, score))
-
-    cluster_scores.sort(key=lambda x: x[1])
+def _rank_clusters_by_intensity(cluster_centers: np.ndarray) -> dict[int, str]:
+    ordered_cluster_ids = np.argsort(np.asarray(cluster_centers, dtype=float))
 
     return {
-        cluster_id: CLUSTER_NAMES[rank]
-        for rank, (cluster_id, _) in enumerate(cluster_scores)
+        int(cluster_id): CLUSTER_NAMES[rank]
+        for rank, cluster_id in enumerate(ordered_cluster_ids)
     }
+
+
+def _build_label_matrices(
+    matrix: np.ndarray,
+    diagonal_mask: np.ndarray,
+    labels_numeric_flat: np.ndarray,
+    cluster_rank_map: dict[int, str],
+) -> tuple[np.ndarray, np.ndarray]:
+    numeric_labels = np.full(matrix.shape, -1, dtype=int)
+    numeric_labels[diagonal_mask] = labels_numeric_flat
+
+    named_labels = np.full(matrix.shape, NO_INFLUENCE_LABEL, dtype=object)
+    named_labels[diagonal_mask] = [cluster_rank_map[int(label)] for label in labels_numeric_flat]
+
+    return numeric_labels, named_labels
 
 
 def cluster_total_matrix(
     total_matrix: np.ndarray,
-    factor_names: list[str],
+    factor_names: list[str] | None = None,
     method: str | ClusteringMethod = ClusteringMethod.KMEANS,
     random_state: int = 42,
 ) -> ClusteringResult:
-    matrix = np.asarray(total_matrix, dtype=float)
+    matrix = _validate_total_matrix(total_matrix)
 
-    if len(factor_names) != matrix.shape[0]:
+    if factor_names is not None and len(factor_names) != matrix.shape[0]:
         raise ValueError("factor_names length must match total_matrix size.")
 
-    labels_numeric = _fit_clustering(
-        total_matrix=matrix,
+    diagonal_mask = ~np.eye(matrix.shape[0], dtype=bool)
+    cell_values = matrix[diagonal_mask]
+
+    labels_numeric_flat, cluster_centers = _fit_clustering(
+        cell_values=cell_values,
         method=method,
         random_state=random_state,
     )
 
-    cluster_rank_map = _rank_clusters_by_intensity(matrix, labels_numeric)
-    labels_named = [cluster_rank_map[label] for label in labels_numeric]
-
-    order_value = {name: i for i, name in enumerate(CLUSTER_NAMES)}
-
-    ordered_indices = np.array(
-        sorted(
-            range(len(factor_names)),
-            key=lambda i: (order_value[labels_named[i]], factor_names[i].lower()),
-        )
-    )
-
-    ordered_matrix = matrix[ordered_indices][:, ordered_indices]
-    ordered_factor_names = [factor_names[i] for i in ordered_indices]
-
-    cluster_name_by_factor = {
-        factor_names[i]: labels_named[i]
-        for i in range(len(factor_names))
-    }
-
-    return ClusteringResult(
-        labels_numeric=labels_numeric,
-        labels_named=labels_named,
-        ordered_indices=ordered_indices,
-        ordered_matrix=ordered_matrix,
-        ordered_factor_names=ordered_factor_names,
-        cluster_name_by_factor=cluster_name_by_factor,
+    cluster_rank_map = _rank_clusters_by_intensity(cluster_centers)
+    labels_numeric, labels_named = _build_label_matrices(
+        matrix=matrix,
+        diagonal_mask=diagonal_mask,
+        labels_numeric_flat=labels_numeric_flat,
         cluster_rank_map=cluster_rank_map,
     )
+
+    return ClusteringResult(
+        total_matrix=matrix,
+        labels_numeric=labels_numeric,
+        labels_named=labels_named,
+        cluster_centers=np.asarray(cluster_centers, dtype=float),
+        cluster_rank_map=cluster_rank_map,
+        factor_names=list(factor_names) if factor_names is not None else None,
+    )
+
+
+def _axis_labels(result: ClusteringResult) -> list[str]:
+    if result.factor_names is not None:
+        return [str(name) for name in result.factor_names]
+
+    return [str(index + 1) for index in range(result.total_matrix.shape[0])]
+
+
+def _display_codes(numeric_labels: np.ndarray) -> np.ndarray:
+    return np.where(numeric_labels < 0, 0, numeric_labels + 1)
 
 
 def plot_clustered_heatmap(
@@ -126,14 +160,13 @@ def plot_clustered_heatmap(
     save_path: str | Path | None = None,
     show: bool = True,
     figsize: tuple[float, float] = (10, 8),
-    cmap: str = "YlOrRd",
     dpi: int = 400,
 ):
-    matrix = clustering_result.ordered_matrix
-    labels = clustering_result.ordered_factor_names
+    matrix = _display_codes(clustering_result.labels_numeric)
+    labels = _axis_labels(clustering_result)
 
     fig, ax = plt.subplots(figsize=figsize)
-    im = ax.imshow(matrix, cmap=cmap, aspect="auto")
+    im = ax.imshow(matrix, cmap=_CLUSTER_COLOR_MAP, norm=_CLUSTER_BOUNDARIES, aspect="auto")
 
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
@@ -144,22 +177,9 @@ def plot_clustered_heatmap(
     ax.set_xlabel("Factors")
     ax.set_ylabel("Factors")
 
-    cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label("Relation Strength")
-
-    ordered_group_names = [
-        clustering_result.cluster_name_by_factor[name]
-        for name in labels
-    ]
-
-    boundaries = []
-    for i in range(1, len(ordered_group_names)):
-        if ordered_group_names[i] != ordered_group_names[i - 1]:
-            boundaries.append(i - 0.5)
-
-    for b in boundaries:
-        ax.axhline(b, color="black", linewidth=1.2)
-        ax.axvline(b, color="black", linewidth=1.2)
+    cbar = plt.colorbar(im, ax=ax, ticks=np.arange(5))
+    cbar.set_ticklabels([NO_INFLUENCE_LABEL, *CLUSTER_NAMES])
+    cbar.set_label("Cluster Label")
 
     plt.tight_layout()
 
@@ -181,27 +201,26 @@ def plot_cluster_membership_bar(
     figsize: tuple[float, float] = (10, 4),
     dpi: int = 300,
 ):
-    ordered_names = clustering_result.ordered_factor_names
-    ordered_groups = [
-        clustering_result.cluster_name_by_factor[name]
-        for name in ordered_names
-    ]
-
-    group_to_num = {name: i for i, name in enumerate(CLUSTER_NAMES)}
-    values = [group_to_num[g] for g in ordered_groups]
-
-    cmap = ListedColormap(["#d9f0d3", "#addd8e", "#fdae61", "#d73027"])
+    flat_labels = np.asarray(clustering_result.labels_named, dtype=object).ravel()
+    groups = [NO_INFLUENCE_LABEL, *CLUSTER_NAMES]
+    counts = [int(np.sum(flat_labels == group_name)) for group_name in groups]
 
     fig, ax = plt.subplots(figsize=figsize)
-    ax.imshow(np.array([values]), aspect="auto", cmap=cmap)
+    bars = ax.bar(groups, counts, color=["#d9d9d9", "#d9f0d3", "#addd8e", "#fdae61", "#d73027"])
 
-    ax.set_xticks(np.arange(len(ordered_names)))
-    ax.set_xticklabels(ordered_names, rotation=90)
-    ax.set_yticks([])
-    ax.set_title("Cluster Membership")
+    ax.set_title("Cluster Membership Counts")
+    ax.set_ylabel("Number of Cells")
+    ax.tick_params(axis="x", rotation=25)
 
-    for i, group_name in enumerate(ordered_groups):
-        ax.text(i, 0, group_name, ha="center", va="center", fontsize=8)
+    for bar, count in zip(bars, counts):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            str(count),
+            ha="center",
+            va="bottom",
+            fontsize=8,
+        )
 
     plt.tight_layout()
 

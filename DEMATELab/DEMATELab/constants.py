@@ -55,7 +55,7 @@ class ClusteringMethod(str, Enum):
     KMEANS = "kmeans"
 
 
-CLUSTER_NAMES = ["Low", "Low2Medium", "Medium2High", "High"]
+CLUSTER_NAMES = ["Low", "Low-to-Medium", "Medium-to-High", "High"]
 
 
 LLM_MODEL = "gemini-2.5-pro"

@@ -11,11 +11,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from PySide6.QtCore import Qt, QEvent, QPoint, QThread
 from PySide6.QtWidgets import QToolTip
 from PySide6.QtWidgets import (
     QComboBox,
+    QCheckBox,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -38,7 +40,9 @@ from PySide6.QtWidgets import (
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
+from .clustering_service import cluster_total_matrix
 from .dematel_visualization import DematelPlotInput, DematelPlotStyle, plot_dematel_influence_map
+from .constants import CLUSTER_NAMES, NO_INFLUENCE_LABEL
 from .llm_worker import ExplanationWorker
 
 
@@ -209,6 +213,7 @@ class ResultsViewerWidget(QWidget):
         self.summary_tab: QWidget | None = None
         self.causal_plot_tab: PlotTab | None = None
         self.heatmap_plot_tab: PlotTab | None = None
+        self.heatmap_cluster_checkbox: QCheckBox | None = None
 
         self._build_ui()
 
@@ -1004,33 +1009,122 @@ class ResultsViewerWidget(QWidget):
         return self.causal_plot_tab
 
     def _create_heatmap_tab(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(8)
+
+        controls_row = QHBoxLayout()
+        self.heatmap_cluster_checkbox = QCheckBox("Show cluster-based heatmap")
+        self.heatmap_cluster_checkbox.setCursor(Qt.PointingHandCursor)
+        self.heatmap_cluster_checkbox.setStyleSheet(
+            "font-family: 'Inter'; font-size: 12px; font-weight: 400; color: #1e3333; background: transparent;"
+        )
+        self.heatmap_cluster_checkbox.toggled.connect(self._render_heatmap_tab)
+        controls_row.addWidget(self.heatmap_cluster_checkbox)
+        controls_row.addStretch()
+        layout.addLayout(controls_row)
+
         self.heatmap_plot_tab = PlotTab("Heatmap")
+        layout.addWidget(self.heatmap_plot_tab, 1)
 
         total_matrix_raw = self._get_matrix_attr("total_matrix")
         if total_matrix_raw is None:
             placeholder = QLabel("Total relation matrix is not available.")
             placeholder.setAlignment(Qt.AlignCenter)
             self.heatmap_plot_tab.layout().addWidget(placeholder)
-            return self.heatmap_plot_tab
+            if self.heatmap_cluster_checkbox is not None:
+                self.heatmap_cluster_checkbox.setEnabled(False)
+            return widget
 
-        matrix = _to_numeric_2d_array(total_matrix_raw)
+        self._render_heatmap_tab()
+        return widget
+
+    def _render_heatmap_tab(self, *_args) -> None:
+        if self.heatmap_plot_tab is None:
+            return
+
+        total_matrix_raw = self._get_matrix_attr("total_matrix")
+        if total_matrix_raw is None:
+            return
+
         factors = self.result.factors
-        ax = self.heatmap_plot_tab.ax
+        matrix = _to_numeric_2d_array(total_matrix_raw)
 
-        ax.clear()
-        im = ax.imshow(matrix)
+        self.heatmap_plot_tab.figure.clf()
+        ax = self.heatmap_plot_tab.figure.add_subplot(111)
+        self.heatmap_plot_tab.ax = ax
+
+        cluster_mode = bool(self.heatmap_cluster_checkbox and self.heatmap_cluster_checkbox.isChecked())
+
+        if cluster_mode:
+            try:
+                clustering_result = cluster_total_matrix(
+                    total_matrix=matrix,
+                    factor_names=factors,
+                )
+            except Exception as exc:
+                if self.heatmap_cluster_checkbox is not None:
+                    was_blocked = self.heatmap_cluster_checkbox.blockSignals(True)
+                    self.heatmap_cluster_checkbox.setChecked(False)
+                    self.heatmap_cluster_checkbox.blockSignals(was_blocked)
+                QMessageBox.warning(self, "Cluster Heatmap", f"Could not generate cluster heatmap:\n{exc}")
+                cluster_mode = False
+
+        if cluster_mode:
+            display_matrix = np.where(
+                clustering_result.labels_numeric < 0,
+                0,
+                clustering_result.labels_numeric + 1,
+            )
+
+            cmap = ListedColormap(["#d9d9d9", "#d9f0d3", "#addd8e", "#fdae61", "#d73027"])
+            norm = BoundaryNorm(np.arange(-0.5, 5.5, 1), cmap.N)
+
+            im = ax.imshow(display_matrix, cmap=cmap, norm=norm, aspect="auto")
+            ax.set_title(
+                "Cluster-Based Heatmap",
+                fontfamily="Inter",
+                fontsize=10,
+                fontweight="normal",
+                color="#2d4d4c",
+            )
+
+            for i in range(len(factors)):
+                for j in range(len(factors)):
+                    label = clustering_result.labels_named[i, j]
+                    ax.text(
+                        j,
+                        i,
+                        label,
+                        ha="center",
+                        va="center",
+                        fontsize=7,
+                        color="#1e3333",
+                    )
+
+            cbar = self.heatmap_plot_tab.figure.colorbar(im, ax=ax, ticks=np.arange(5))
+            cbar.set_ticklabels([NO_INFLUENCE_LABEL, *CLUSTER_NAMES])
+            cbar.set_label("Cluster Label")
+        else:
+            im = ax.imshow(matrix)
+            ax.set_title(
+                "Total Relation Matrix Heatmap",
+                fontfamily="Inter",
+                fontsize=10,
+                fontweight="normal",
+                color="#2d4d4c",
+            )
+            cbar = self.heatmap_plot_tab.figure.colorbar(im, ax=ax)
+            cbar.set_label("Relation Strength")
 
         ax.set_xticks(range(len(factors)))
         ax.set_yticks(range(len(factors)))
         ax.set_xticklabels(factors, rotation=45, ha="right")
         ax.set_yticklabels(factors)
 
-        ax.set_title("Total Relation Matrix Heatmap", fontfamily="Inter", fontsize=10, fontweight="normal", color="#2d4d4c")
-        self.heatmap_plot_tab.figure.colorbar(im, ax=ax)
         self.heatmap_plot_tab.figure.tight_layout()
         self.heatmap_plot_tab.canvas.draw()
-
-        return self.heatmap_plot_tab
 
     def _create_ai_tab(self) -> QWidget:
         widget = QWidget()

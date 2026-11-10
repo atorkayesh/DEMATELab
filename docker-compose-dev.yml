@@ -1,0 +1,33 @@
+name: dematelab-dev
+
+services:
+  dematelab:
+    container_name: dematelab-dev
+    image: dematelab:dev
+    build:
+      context: ./DEMATELab
+      dockerfile: Dockerfile.dev
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
+    env_file:
+      - path: ./DEMATELab/.env
+        required: false
+    environment:
+      - APP_MODE=dev
+    ports:
+      # Bound to localhost only: the dev session has no password by default.
+      - "127.0.0.1:${NOVNC_PORT:-6080}:6080"
+    volumes:
+      # Live source: edits under DEMATELab/DEMATELab/ restart the GUI.
+      - ./DEMATELab:/app
+      - ./Example data:/workspace/examples:ro
+      - ./exports:/workspace/exports
+    shm_size: 256mb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6080/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

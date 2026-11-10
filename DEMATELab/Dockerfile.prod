@@ -1,0 +1,56 @@
+# Production image: source and runtime dependencies are baked in (no dev group, no bind
+# mounts), VNC_PASSWORD is required, and the GUI restarts if it is closed or crashes.
+# trixie is required: PySide6 6.12 aarch64 wheels need glibc >= 2.39 (bookworm ships 2.36).
+FROM python:3.13-slim-trixie
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH" \
+    QT_QPA_PLATFORM=xcb \
+    APP_MODE=prod
+
+# Qt/X11 runtime libraries, a virtual display, a window manager, and the VNC/noVNC stack.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tini \
+    xvfb x11vnc openbox novnc websockify \
+    fonts-dejavu-core fontconfig \
+    libgl1 libegl1 libglib2.0-0t64 libdbus-1-3 libfontconfig1 \
+    libxkbcommon0 libxkbcommon-x11-0 libx11-xcb1 libxrender1 libxi6 libsm6 libice6 \
+    libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+    libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxcb-xfixes0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=astral/uv:0.12.10 /uv /uvx /bin/
+
+# Run as the host user's UID/GID so bind-mounted folders stay writable on Linux;
+# scripts/docker.py passes them automatically there (Docker Desktop maps ownership itself).
+ARG APP_UID=1000
+ARG APP_GID=1000
+RUN (getent group "$APP_GID" >/dev/null || groupadd --gid "$APP_GID" app) \
+    && useradd --create-home --uid "$APP_UID" --gid "$APP_GID" app \
+    && mkdir -p /app /opt/venv /workspace/exports /tmp/.X11-unix \
+    && chmod 1777 /tmp/.X11-unix \
+    && ln -s /app/assets /workspace/assets \
+    && chown -R "$APP_UID:$APP_GID" /app /opt/venv /workspace
+
+COPY docker/index.html /usr/share/novnc/index.html
+COPY --chmod=755 docker/start.sh /usr/local/bin/dematelab-start
+
+USER app
+WORKDIR /app
+
+# Install dependencies first so source edits don't invalidate this layer.
+COPY --chown=${APP_UID}:${APP_GID} pyproject.toml uv.lock /app/
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY --chown=${APP_UID}:${APP_GID} . /app/
+RUN uv sync --frozen --no-dev
+
+EXPOSE 6080
+
+ENTRYPOINT ["tini", "--"]
+CMD ["dematelab-start"]

@@ -24,7 +24,7 @@ Paths below are relative to `DEMATELab/DEMATELab/`.
 ## Verification
 - No automated tests, CI workflows, or lint/formatter/typecheck configuration is checked in. Do not assume `pytest` or other quality tools are installed.
 - Dependencies are locked in `DEMATELab/uv.lock` (used by the Docker images). After editing `DEMATELab/pyproject.toml`, run `uv lock` in `DEMATELab/`.
-- Docker: `uv run scripts/docker.py up [--prod]` runs the GUI in a container served over noVNC at `http://localhost:6080`. The container starts the app from `/workspace`, which links `assets/` back to `/app/assets` so the relative icon paths still resolve.
+- Docker: `make dev` / `make prod` (root `Makefile`, wrapping `docker compose -f docker-compose-<dev|prod>.yml --env-file DEMATELab/.env`) runs the GUI in a container served over noVNC at `http://localhost:6080`; `make logs|restart|shell|status|down` act on whichever setup is running. The container starts as root only so `DEMATELab/docker/start.sh` can give the `app` user the owner of `exports/`, then drops privileges. The app runs from `/workspace`, which links `assets/` back to `/app/assets` so the relative icon paths still resolve.
 - Minimum syntax check from the repository root: `python3 -m compileall -q DEMATELab/DEMATELab`. This does not verify numerical correctness or GUI behavior.
 - For behavior changes, launch the GUI and exercise the affected solver/import/export flow. Sample workbooks are in `Example data/`; AI explanation additionally requires a provider API key and network access.
 - `font_loader.ensure_inter_fonts` may download Inter from GitHub if the package's `assets/fonts/Inter-Regular.ttf` is missing; download failures silently fall back to available fonts.

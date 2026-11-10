@@ -96,6 +96,45 @@ The AI tab generates an academic-style narrative interpretation of the results. 
 
 An API key is required. Keys are never stored — they are only held in memory for the duration of the session.
 
+---
+
+## Running with Docker
+
+The app can also run in a container and be used from a browser (via noVNC), with no local Python or Qt setup. You need Docker and [uv](https://docs.astral.sh/uv/). All commands run from the repository root:
+
+```bash
+uv run scripts/docker.py up          # build, start, and open http://localhost:6080
+uv run scripts/docker.py logs -f     # follow logs
+uv run scripts/docker.py restart     # restart the container
+uv run scripts/docker.py status      # show container status
+uv run scripts/docker.py shell       # open a shell in the container
+uv run scripts/docker.py down        # stop and remove the container
+```
+
+Add `--prod` to any command to use the production setup instead of the dev one. Use `up --no-build` to skip rebuilding the image and `up --no-open` to skip opening the browser.
+
+| | Dev (`docker-compose-dev.yml`) | Prod (`docker-compose-prod.yml`) |
+|---|---|---|
+| Image | `DEMATELab/Dockerfile.dev` (includes dev tools) | `DEMATELab/Dockerfile.prod` (runtime only) |
+| Source | Mounted from `DEMATELab/`; the app restarts when a `.py` file changes | Baked into the image; rebuild to update |
+| Password | None by default | `VNC_PASSWORD` required in `DEMATELab/.env` |
+| Exports | `./exports/` on the host | `dematelab-exports` Docker volume |
+| Address | `127.0.0.1:${NOVNC_PORT:-6080}` | `127.0.0.1:${NOVNC_PORT:-6080}` (`NOVNC_BIND` to change the interface) |
+
+Setup for production:
+
+```bash
+cp DEMATELab/.env.example DEMATELab/.env   # then set VNC_PASSWORD
+uv run scripts/docker.py up --prod
+```
+
+Notes:
+- In the app's file dialogs, the example workbooks are in `examples/` (read-only) and exports should be saved to `exports/`.
+- Everyone who opens the URL shares the same app session, so the production setup suits one user at a time. noVNC traffic is not encrypted: before exposing it beyond `localhost`, put it behind a TLS reverse proxy with its own login. VNC passwords are limited to 8 characters.
+- Dev and prod share `DEMATELab/.env`, so setting `VNC_PASSWORD` for prod also adds a password to the dev session. `NOVNC_PORT` and the other settings there apply when you start with `scripts/docker.py`.
+- On Linux, `scripts/docker.py` builds the image for your user ID so `exports/` stays writable. If you run `docker compose` directly, set `APP_UID`/`APP_GID` yourself.
+- Dependencies are locked in `DEMATELab/uv.lock`; after changing `DEMATELab/pyproject.toml`, run `uv lock` in `DEMATELab/` and rebuild.
+
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.

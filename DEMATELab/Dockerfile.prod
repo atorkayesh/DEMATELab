@@ -26,31 +26,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=astral/uv:0.12.10 /uv /uvx /bin/
 
-# Run as the host user's UID/GID so bind-mounted folders stay writable on Linux;
-# scripts/docker.py passes them automatically there (Docker Desktop maps ownership itself).
-ARG APP_UID=1000
-ARG APP_GID=1000
-RUN (getent group "$APP_GID" >/dev/null || groupadd --gid "$APP_GID" app) \
-    && useradd --create-home --uid "$APP_UID" --gid "$APP_GID" app \
+# The app runs as this user. At start-up, start.sh gives it the UID/GID of the exports
+# folder's owner, so bind-mounted exports stay writable on Linux without a rebuild.
+# Code and dependencies stay root-owned (read-only to app): the container starts as root.
+RUN useradd --create-home --uid 1000 --user-group app \
     && mkdir -p /app /opt/venv /workspace/exports /tmp/.X11-unix \
     && chmod 1777 /tmp/.X11-unix \
     && ln -s /app/assets /workspace/assets \
-    && chown -R "$APP_UID:$APP_GID" /app /opt/venv /workspace
+    && chown app:app /workspace /workspace/exports
 
 COPY docker/index.html /usr/share/novnc/index.html
 COPY --chmod=755 docker/start.sh /usr/local/bin/dematelab-start
+# Strip CRLF in case the script was checked out or edited with Windows line endings.
+RUN sed -i 's/\r$//' /usr/local/bin/dematelab-start
 
-USER app
 WORKDIR /app
 
 # Install dependencies first so source edits don't invalidate this layer.
-COPY --chown=${APP_UID}:${APP_GID} pyproject.toml uv.lock /app/
+COPY pyproject.toml uv.lock /app/
 RUN uv sync --frozen --no-dev --no-install-project
 
-COPY --chown=${APP_UID}:${APP_GID} . /app/
+COPY . /app/
 RUN uv sync --frozen --no-dev
 
 EXPOSE 6080
 
-ENTRYPOINT ["tini", "--"]
-CMD ["dematelab-start"]
+# start.sh runs as root only to match the app user to the exports owner, then drops to it.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/usr/local/bin/dematelab-start"]

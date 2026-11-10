@@ -1,0 +1,7 @@
+# Shell scripts run inside Linux containers: keep LF line endings even on Windows checkouts
+# (a CRLF shebang stops docker/start.sh from running).
+*.sh text eol=lf
+
+# Read by make and docker compose on the host; keep them LF so values and recipes have no stray CR.
+Makefile text eol=lf
+.env.example text eol=lf

@@ -7,11 +7,8 @@ services:
     build:
       context: ./DEMATELab
       dockerfile: Dockerfile.prod
-      args:
-        APP_UID: ${APP_UID:-1000}
-        APP_GID: ${APP_GID:-1000}
     env_file:
-      # Must define VNC_PASSWORD; the container refuses to start without it.
+      # Must define VNC_PASSWORD; without it the container waits and reports unhealthy.
       - path: ./DEMATELab/.env
         required: true
     environment:
@@ -25,11 +22,13 @@ services:
     shm_size: 256mb
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6080/')"]
+      # Runs as root: use the system Python in isolated mode (ignores the app-writable cwd).
+      test: ["CMD", "/usr/local/bin/python3", "-I", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6080/')"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+      start_interval: 1s
 
 volumes:
   dematelab-exports:

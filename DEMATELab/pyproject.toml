@@ -21,6 +21,12 @@ dependencies = [
     "qtawesome"
 ]
 
+[dependency-groups]
+# Dev-only tooling; the dev container uses watchfiles to restart the GUI on code changes.
+dev = [
+    "watchfiles>=1.0.0",
+]
+
 [project.scripts]
 DEMATELab = "DEMATELab.gui_app:main"
 

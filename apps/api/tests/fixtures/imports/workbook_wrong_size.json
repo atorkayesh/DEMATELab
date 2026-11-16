@@ -1,0 +1,10 @@
+{
+ "kind": "workbook",
+ "file": "workbook_wrong_size.xlsx",
+ "factor_count": 4,
+ "expert_names": [
+  "E1",
+  "E2"
+ ],
+ "error_message": "Sheet 'E1': Uploaded matrix must be either exactly 4 x 4 or 5 x 5 when the first row and first column contain factor names."
+}

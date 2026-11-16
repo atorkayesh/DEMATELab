@@ -1,0 +1,61 @@
+{
+ "request": {
+  "solver_type": "grey_dematel",
+  "threshold_method": "median",
+  "factors": [
+   "Cost",
+   "Quality",
+   "Time"
+  ],
+  "experts": [
+   {
+    "name": "Expert 1",
+    "weight": 0.5,
+    "matrix": [
+     [
+      "No influence",
+      "No influence",
+      "No influence"
+     ],
+     [
+      "No influence",
+      "No influence",
+      "No influence"
+     ],
+     [
+      "No influence",
+      "No influence",
+      "No influence"
+     ]
+    ]
+   },
+   {
+    "name": "Expert 2",
+    "weight": 0.5,
+    "matrix": [
+     [
+      "No influence",
+      "No influence",
+      "No influence"
+     ],
+     [
+      "No influence",
+      "No influence",
+      "No influence"
+     ],
+     [
+      "No influence",
+      "No influence",
+      "No influence"
+     ]
+    ]
+   }
+  ]
+ },
+ "numpy_version": "2.5.4",
+ "corrected_weights": [
+  0.5,
+  0.5
+ ],
+ "error_message": "All matrix cells are set to \"No influence\". Please assign at least one causal relationship before running the analysis."
+}

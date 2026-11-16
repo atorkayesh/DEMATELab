@@ -1,0 +1,10 @@
+{
+ "kind": "workbook",
+ "file": "workbook_unknown_label.xlsx",
+ "factor_count": 3,
+ "expert_names": [
+  "E1",
+  "E2"
+ ],
+ "error_message": "Sheet 'E2': Invalid matrix value found: 'Very high influence'. Allowed values are either \"No influence, Low influence, Medium influence, High influence, Extreme influence\"."
+}

@@ -1,0 +1,322 @@
+{
+ "request": {
+  "solver_type": "dematel",
+  "threshold_method": "first_quartile",
+  "factors": [
+   "C1",
+   "C2",
+   "C3",
+   "C4"
+  ],
+  "experts": [
+   {
+    "name": "Expert 1",
+    "weight": 0.334,
+    "matrix": [
+     [
+      "No influence",
+      "Low influence",
+      "Medium influence",
+      "High influence"
+     ],
+     [
+      "Extreme influence",
+      "No influence",
+      "Low influence",
+      "Medium influence"
+     ],
+     [
+      "High influence",
+      "Extreme influence",
+      "No influence",
+      "Low influence"
+     ],
+     [
+      "Medium influence",
+      "High influence",
+      "Extreme influence",
+      "No influence"
+     ]
+    ]
+   },
+   {
+    "name": "Expert 2",
+    "weight": 0.333,
+    "matrix": [
+     [
+      "No influence",
+      "High influence",
+      "Low influence",
+      "No influence"
+     ],
+     [
+      "Medium influence",
+      "No influence",
+      "Extreme influence",
+      "Low influence"
+     ],
+     [
+      "Low influence",
+      "Medium influence",
+      "No influence",
+      "High influence"
+     ],
+     [
+      "Extreme influence",
+      "No influence",
+      "Medium influence",
+      "No influence"
+     ]
+    ]
+   },
+   {
+    "name": "Expert 3",
+    "weight": 0.333,
+    "matrix": [
+     [
+      "No influence",
+      "Medium influence",
+      "Medium influence",
+      "Extreme influence"
+     ],
+     [
+      "Low influence",
+      "No influence",
+      "High influence",
+      "Medium influence"
+     ],
+     [
+      "No influence",
+      "Low influence",
+      "No influence",
+      "Medium influence"
+     ],
+     [
+      "High influence",
+      "Medium influence",
+      "Low influence",
+      "No influence"
+     ]
+    ]
+   }
+  ]
+ },
+ "numpy_version": "2.5.4",
+ "corrected_weights": [
+  0.334,
+  0.333,
+  0.333
+ ],
+ "result": {
+  "factors": [
+   "C1",
+   "C2",
+   "C3",
+   "C4"
+  ],
+  "expert_weights": [
+   0.334,
+   0.333,
+   0.333
+  ],
+  "direct_matrix": [
+   [
+    0.0,
+    1.999,
+    1.6670000000000003,
+    2.334
+   ],
+   [
+    2.3350000000000004,
+    0.0,
+    2.665,
+    1.6670000000000003
+   ],
+   [
+    1.335,
+    2.3350000000000004,
+    0.0,
+    1.999
+   ],
+   [
+    2.999,
+    1.6680000000000001,
+    2.3350000000000004,
+    0.0
+   ]
+  ],
+  "normalized_matrix": [
+   [
+    0.0,
+    0.28548986003998855,
+    0.2380748357612111,
+    0.3333333333333333
+   ],
+   [
+    0.33347614967152245,
+    0.0,
+    0.3806055412739217,
+    0.2380748357612111
+   ],
+   [
+    0.19065981148243358,
+    0.33347614967152245,
+    0.0,
+    0.28548986003998855
+   ],
+   [
+    0.4283061982290774,
+    0.23821765209940016,
+    0.33347614967152245,
+    0.0
+   ]
+  ],
+  "total_matrix": [
+   [
+    2.1416802475967125,
+    2.209550667107478,
+    2.3359616792401257,
+    2.2401585342416315
+   ],
+   [
+    2.526965114711137,
+    2.1300858837049454,
+    2.566693311341547,
+    2.3202813018057253
+   ],
+   [
+    2.2078855799090973,
+    2.1531175796082276,
+    2.052066211374589,
+    2.1198989296276136
+   ],
+   [
+    2.6838460015664753,
+    2.4100193163468133,
+    2.6297298090429164,
+    2.2191414819027537
+   ]
+  ],
+  "r": [
+   8.927351128185947,
+   9.544025611563354,
+   8.532968300519528,
+   9.942736608858958
+  ],
+  "c": [
+   9.560376943783423,
+   8.902773446767466,
+   9.584451010999178,
+   8.899480247577724
+  ],
+  "prominence": [
+   18.48772807196937,
+   18.446799058330818,
+   18.117419311518706,
+   18.842216856436682
+  ],
+  "relation": [
+   -0.6330258155974757,
+   0.6412521647958886,
+   -1.0514827104796503,
+   1.0432563612812338
+  ],
+  "cause_group": [
+   "C2",
+   "C4"
+  ],
+  "effect_group": [
+   "C1",
+   "C3"
+  ],
+  "threshold_method": "first_quartile",
+  "threshold_value": 2.1502582466053486
+ },
+ "crisp_total_matrix": [
+  [
+   2.1416802475967125,
+   2.209550667107478,
+   2.3359616792401257,
+   2.2401585342416315
+  ],
+  [
+   2.526965114711137,
+   2.1300858837049454,
+   2.566693311341547,
+   2.3202813018057253
+  ],
+  [
+   2.2078855799090973,
+   2.1531175796082276,
+   2.052066211374589,
+   2.1198989296276136
+  ],
+  [
+   2.6838460015664753,
+   2.4100193163468133,
+   2.6297298090429164,
+   2.2191414819027537
+  ]
+ ],
+ "summary_order": [
+  3,
+  0,
+  1,
+  2
+ ],
+ "strongest_relation": -1.0514827104796503,
+ "cluster": {
+  "labels_named": [
+   [
+    "No influence",
+    "Low",
+    "Low-to-Medium",
+    "Low"
+   ],
+   [
+    "Medium-to-High",
+    "No influence",
+    "Medium-to-High",
+    "Low-to-Medium"
+   ],
+   [
+    "Low",
+    "Low",
+    "No influence",
+    "Low"
+   ],
+   [
+    "High",
+    "Low-to-Medium",
+    "High",
+    "No influence"
+   ]
+  ],
+  "labels_numeric": [
+   [
+    -1,
+    1,
+    2,
+    1
+   ],
+   [
+    0,
+    -1,
+    0,
+    2
+   ],
+   [
+    1,
+    1,
+    -1,
+    1
+   ],
+   [
+    3,
+    2,
+    3,
+    -1
+   ]
+  ]
+ }
+}

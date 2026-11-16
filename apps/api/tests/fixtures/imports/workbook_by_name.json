@@ -1,0 +1,55 @@
+{
+ "kind": "workbook",
+ "file": "workbook_by_name.xlsx",
+ "factor_count": 3,
+ "expert_names": [
+  "alice",
+  " Bob "
+ ],
+ "expected": {
+  "factor_names": null,
+  "matrices": [
+   {
+    "expert_name": "alice",
+    "matrix": [
+     [
+      "No influence",
+      "High influence",
+      "High influence"
+     ],
+     [
+      "Low influence",
+      "No influence",
+      "Low influence"
+     ],
+     [
+      "Extreme influence",
+      "Extreme influence",
+      "No influence"
+     ]
+    ]
+   },
+   {
+    "expert_name": " Bob ",
+    "matrix": [
+     [
+      "No influence",
+      "Low influence",
+      "High influence"
+     ],
+     [
+      "Medium influence",
+      "No influence",
+      "Extreme influence"
+     ],
+     [
+      "Low influence",
+      "Medium influence",
+      "No influence"
+     ]
+    ]
+   }
+  ],
+  "matched_by": "name"
+ }
+}

@@ -1,0 +1,7 @@
+{
+ "kind": "matrix",
+ "file": "matrix_wrong_size.xlsx",
+ "factor_count": 4,
+ "expert_names": null,
+ "error_message": "Uploaded sheet: Uploaded matrix must be either exactly 4 x 4 or 5 x 5 when the first row and first column contain factor names."
+}

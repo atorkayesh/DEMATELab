@@ -88,6 +88,21 @@ class TestGeminiService(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(error_type):
                     await GeminiService(make).generate("k", "m", "p")
 
+    async def test_invalid_key_400(self):
+        """Gemini's HTTP 400 API_KEY_INVALID is an auth error; other 400s stay provider errors."""
+        bad_key = {
+            "error": {
+                "message": "API key not valid. Please pass a valid API key.",
+                "details": [{"reason": "API_KEY_INVALID"}],
+            }
+        }
+        for body, error_type in [(bad_key, LlmAuthError), ({"error": {"message": "bad request"}}, LlmProviderError)]:
+            with self.subTest(error_type=error_type):
+                make, _ = factory(error=genai_errors.APIError(400, body))
+                with self.assertRaises(error_type) as caught:
+                    await GeminiService(make).generate("k", "m", "p")
+                self.assertIs(type(caught.exception), error_type)
+
     async def test_timeout(self):
         """Test the time limit."""
         make, _ = factory(MagicMock(text="late"), delay=0.3)

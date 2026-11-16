@@ -82,11 +82,18 @@ class GeminiService:
         """Map a Gemini API error to its typed error."""
         status = getattr(exc, "code", None)
         detail = f"Gemini answered HTTP {status}: {getattr(exc, 'message', '')}"
-        if status in (401, 403):
+        if status in (401, 403) or self._is_invalid_key(status, exc):
             return LlmAuthError(detail)
         if status == 429:
             return LlmRateLimitError(detail)
         return LlmProviderError(detail, public_message=f"The AI provider request failed (HTTP {status}).")
+
+    def _is_invalid_key(self, status: Optional[int], exc: genai_errors.APIError) -> bool:
+        """Gemini rejects a bad key with HTTP 400 and reason API_KEY_INVALID, not 401."""
+        if status != 400:
+            return False
+        text = f"{getattr(exc, 'message', '')} {getattr(exc, 'details', '')}"
+        return "API_KEY_INVALID" in text or "API key not valid" in text
 
 
 gemini_service = GeminiService()

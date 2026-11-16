@@ -35,7 +35,7 @@ export function StepList({
                 aria-current={isCurrent ? "step" : undefined}
                 onClick={() => onOpen(step)}
                 className={cn(
-                  "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition-colors",
+                  "flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs max-sm:py-2 whitespace-nowrap transition-colors",
                   isCurrent
                     ? "border-primary bg-primary text-primary-foreground"
                     : "bg-card text-muted-foreground enabled:hover:text-foreground disabled:opacity-60",

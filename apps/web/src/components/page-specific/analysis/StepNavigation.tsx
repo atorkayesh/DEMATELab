@@ -22,6 +22,7 @@ export function StepNavigation({
         type="button"
         variant="outline"
         size="lg"
+        className="max-sm:h-11"
         onClick={() => onBack?.()}
         disabled={!onBack || pending}
       >
@@ -31,6 +32,7 @@ export function StepNavigation({
       <Button
         type="submit"
         size="lg"
+        className="max-sm:h-11"
         disabled={pending}
         aria-busy={pending}
         data-autofocus={autoFocus || undefined}
@@ -42,10 +44,10 @@ export function StepNavigation({
         )}
         {nextLabel}
       </Button>
-      <span className="hidden text-xs text-muted-foreground sm:inline">
+      <span className="hidden text-xs text-muted-foreground sm:pointer-fine:inline">
         {FLOW_TEXT.KEYBOARD_HINT}
       </span>
-      <div className="ml-auto">
+      <div className="ml-auto flex">
         <StartOverButton disabled={pending} />
       </div>
     </div>

@@ -54,7 +54,7 @@ export function ExportBar({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <DownloadButton
           label={EXPORTS.xlsx.label}
           pending={isPending("xlsx")}

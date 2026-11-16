@@ -15,7 +15,7 @@ import type { AnalysisRequest } from "@/interfaces/analysis.interface";
 import type { AnalysisData } from "@/interfaces/result.interface";
 import { hasTotalMatrix, resultMatrix } from "@/utils/result.utils";
 
-const TRIGGER_CLASS = "flex-none px-3";
+const TRIGGER_CLASS = "flex-none px-3 max-sm:h-10";
 
 /**
  * Qt's result tabs as a segmented control. Only the open tab is mounted (charts load on first
@@ -37,7 +37,7 @@ export function ResultTabs({
   return (
     <Tabs defaultValue={TAB_IDS.SUMMARY} className="gap-4">
       <div className="w-full overflow-x-auto pb-1">
-        <TabsList className="h-9">
+        <TabsList className="h-9 max-sm:h-11">
           <TabsTrigger value={TAB_IDS.SUMMARY} className={TRIGGER_CLASS}>
             {TAB_LABELS.SUMMARY}
           </TabsTrigger>

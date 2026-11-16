@@ -5,6 +5,9 @@ import { MATRIX_GRID } from "@/constants/analysis.constants";
 import type { MatrixScale } from "@/interfaces/scales.interface";
 import { useAnalysisStore } from "@/store/analysis.store";
 
+/** Frozen factor-name column: narrower on phones so more cells fit. */
+const ROW_HEADER_WIDTH = "w-24 sm:w-40";
+
 const HEADER_CLASS =
   "flex items-center truncate px-2 text-xs font-semibold text-foreground";
 
@@ -52,14 +55,13 @@ export function MatrixGrid({
       ref={scrollRef}
       className="max-h-[60vh] w-full overflow-auto rounded-lg border bg-card"
     >
-      <div style={{ width: MATRIX_GRID.ROW_HEADER_WIDTH + bodyWidth }}>
+      <div className="w-max">
         <div
           className="sticky top-0 z-20 flex border-b bg-card"
           style={{ height: MATRIX_GRID.HEADER_HEIGHT }}
         >
           <div
-            className="sticky left-0 z-30 shrink-0 border-r bg-card"
-            style={{ width: MATRIX_GRID.ROW_HEADER_WIDTH }}
+            className={`sticky left-0 z-30 shrink-0 border-r bg-card ${ROW_HEADER_WIDTH}`}
           />
           <div className="relative shrink-0" style={{ width: bodyWidth }}>
             {virtualColumns.map((column) => (
@@ -76,8 +78,8 @@ export function MatrixGrid({
         </div>
         <div className="flex" style={{ height: bodyHeight }}>
           <div
-            className="sticky left-0 z-10 shrink-0 border-r bg-card"
-            style={{ width: MATRIX_GRID.ROW_HEADER_WIDTH, height: bodyHeight }}
+            className={`sticky left-0 z-10 shrink-0 border-r bg-card ${ROW_HEADER_WIDTH}`}
+            style={{ height: bodyHeight }}
           >
             {virtualRows.map((row) => (
               <div

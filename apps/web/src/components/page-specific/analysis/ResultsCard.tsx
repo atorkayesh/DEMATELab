@@ -19,7 +19,12 @@ export function ResultsCard({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex w-full flex-col gap-4 pt-6 pb-8 duration-200 animate-in fade-in slide-in-from-bottom-3 motion-reduce:animate-none">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button type="button" variant="outline" onClick={onBack}>
+        <Button
+          type="button"
+          variant="outline"
+          className="max-sm:h-11"
+          onClick={onBack}
+        >
           <ArrowLeftIcon data-icon="inline-start" />
           {FLOW_TEXT.BACK_TO_INPUTS}
         </Button>

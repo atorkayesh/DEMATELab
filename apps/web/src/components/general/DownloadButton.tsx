@@ -20,6 +20,7 @@ export function DownloadButton({
       onClick={onClick}
       disabled={disabled || pending}
       aria-busy={pending}
+      className="w-full max-sm:h-11 sm:w-auto"
     >
       {pending ? (
         <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />

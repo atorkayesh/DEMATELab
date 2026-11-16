@@ -30,7 +30,7 @@ export function StartOverButton({ disabled = false }: { disabled?: boolean }) {
       <Button
         type="button"
         variant="ghost"
-        className="text-muted-foreground hover:bg-transparent aria-expanded:bg-transparent hover:text-destructive focus-visible:text-destructive"
+        className="text-muted-foreground max-sm:h-11 hover:bg-transparent aria-expanded:bg-transparent hover:text-destructive focus-visible:text-destructive"
         onClick={() => setConfirming(true)}
         disabled={disabled}
       >

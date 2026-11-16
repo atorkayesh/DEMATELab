@@ -150,8 +150,7 @@ export const IMPORT_TEXT = {
 export const MATRIX_GRID = {
   ROW_HEIGHT: 40,
   HEADER_HEIGHT: 40,
-  ROW_HEADER_WIDTH: 160,
-  CELL_WIDTH: { standard: 170, fuzzy_z: 300 },
+  CELL_WIDTH: { standard: 200, fuzzy_z: 300 },
   OVERSCAN: 4,
   /** Initial viewport before layout (also used in tests, where there is no layout). */
   INITIAL_RECT: { width: 1000, height: 480 },

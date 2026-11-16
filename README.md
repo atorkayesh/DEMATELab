@@ -89,14 +89,20 @@ python -m DEMATELab
 
 ## AI Explanation
 
-The AI tab generates an academic-style narrative interpretation of the results. Supported engines:
+The AI tab generates an academic-style narrative interpretation of the results. In the web app, pick an
+**AI Provider** and one of its models (the list and the cheap default come from the API,
+`GET /api/v1/explanations/providers`):
 
-| Engine | Example models |
-|---|---|
-| Gemini | gemini-2.5-pro, gemini-2.0-flash |
-| OpenAI | gpt-4o, gpt-4o-mini |
-| OpenRouter | openai/gpt-4o-mini, mistralai/mistral-7b-instruct |
-| Groq | llama-3.3-70b-versatile, mixtral-8x7b-32768 |
+| AI Provider | Default model | Other models |
+|---|---|---|
+| Gemini | gemini-3.5-flash-lite | gemini-4-carbon, gemini-4-argon, gemini-4-hydrogen, gemini-3.8-flash, gemini-3.6-flash, gemini-3.1-flash-lite |
+| OpenAI | gpt-6-luna | gpt-6-astra, gpt-6.1-sol, gpt-6.1-terra |
+| Azure OpenAI | none: enter your deployment name | |
+| OpenRouter | openai/gpt-6-luna | anthropic/claude-sonnet-5.5, openai/gpt-6.1-sol, google/gemini-4-carbon, x-ai/grok-4.7, qwen/qwen4-max, deepseek/deepseek-v4.1-flash |
+| Groq | openai/gpt-oss-20b | openai/gpt-oss-120b, llama-3.3-70b-versatile, llama-3.1-8b-instant |
+| Anthropic | claude-haiku-5-5 | claude-opus-5-5, claude-sonnet-5-5, claude-fable-5-2 |
+
+The legacy Qt app keeps its own engine list (no Anthropic) and free-text model field.
 
 An API key is required. Keys are never stored — they are only held in memory for the duration of the session.
 

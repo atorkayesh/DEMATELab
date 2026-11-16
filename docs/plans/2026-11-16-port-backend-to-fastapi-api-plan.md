@@ -78,7 +78,8 @@ cluster heatmap in `results_viewer_widget.py:439-789,1020-1123,1397-1545`; workb
    `dematel_visualization.py:166`). `dpi` accepts `100` (display) or `300` (download, saved with
    `bbox_inches="tight"` as Qt's export does).
 7. AI provider keys are **supplied per request by the user** (as in Qt), never stored, never logged, and
-   not in env files. Five providers as in Qt: Gemini, OpenAI, Azure OpenAI, OpenRouter, Groq.
+   not in env files. Five providers as in Qt: Gemini, OpenAI, Azure OpenAI, OpenRouter, Groq; Anthropic was added
+   later, with a validated model catalogue served by `GET /explanations/providers`.
 8. **Fixes to labels, not maths** (these were wrong in Qt and are corrected because the web app shows
    them):
    - Results carry the real `solver_type`, so Z results are labelled "Fuzzy Z-DEMATEL" (Qt shows

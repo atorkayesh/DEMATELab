@@ -199,9 +199,11 @@ Button "Run Analysis"; analysis errors inline in red under the editor.
 - Heatmap: checkbox "Show cluster-based heatmap" switching `mode`; on a cluster error show Qt's
   "Could not generate cluster heatmap: {message}" and untick. "Export Cluster Heatmap to PNG" shows the
   same message on failure (no fallback file, see backend Settled Decision 8).
-- AI Explanation: title "AI-Assisted Interpretation", Qt's note text, Engine (Gemini, OpenAI, Azure
-  OpenAI, OpenRouter, Groq), API Key (password), Model (prefilled with the engine's default; placeholder
-  "Leave blank to use the default model", Azure "Enter the Azure deployment name"); Azure opens a dialog
+- AI Explanation: title "AI-Assisted Interpretation", Qt's note text, AI Provider (Gemini, OpenAI, Azure
+  OpenAI, OpenRouter, Groq, Anthropic; renamed from Qt's "Engine"), API Key (password), Model (a select of
+  the provider's models from `GET /explanations/providers`, preselected to its cheap default; Azure is a
+  free-text deployment name with no default, placeholder "Your Azure deployment name, e.g. gpt-4o-mini",
+  and Generate disabled until filled; failures show in a toast); Azure opens a dialog
   "Azure OpenAI Endpoint" with Qt's text and placeholder, remembered while the results stay; status
   "Please enter an API key." / "Generating explanation..." / "Done" / error message; button
   "Generate Explanation" disabled while pending. On failure the status shows "Error" and the API's

@@ -211,7 +211,7 @@ apps/api/
 │                        # analysis_charts, imports, explanations
 ├── features/            # All logic: conversion, engines, thresholds, analysis, summary, clustering,
 │                        # charts, XLSX export, imports, explanation prompt and flow
-├── services/            # I/O only: llm_provider_service (httpx), gemini_service (google-genai)
+├── services/            # I/O only: llm_provider_service (httpx, incl. Anthropic), gemini_service (google-genai)
 ├── models/              # Pydantic request/response models; solver_models.py holds internal numpy outputs
 ├── utils/               # Helpers without I/O: response builder, number arithmetic, Excel parsing,
 │                        # figure rendering, influence map geometry, fonts
@@ -266,8 +266,14 @@ stateless). CPU work runs in `asyncio.to_thread`. Charts use the `Figure` API on
 - Keys come with each request (`ExplanationRequest.api_key`, a `SecretStr` with `repr=False`), are used
   once, and are never stored, logged, or returned. `ErrorPresenter` logs only field paths and error types
   for validation errors; provider bodies are logged only after removing the key.
-- Errors: 422 `missing_api_key` / `missing_azure_endpoint`; 502 `llm_auth_failed` (401/403),
-  `llm_rate_limited` (429), `llm_provider_error`; 504 `llm_timeout` (120 s).
+- Providers: Gemini (google-genai), OpenAI, OpenRouter, Groq (OpenAI-compatible), Azure OpenAI, and
+  Anthropic (Messages API, `x-api-key`, `anthropic-version: 2023-06-01`). `constants/llm_constants.py` is
+  the single model catalogue (`PROVIDER_MODELS`, 3-7 models each, source URL per list; `DEFAULT_MODELS`,
+  a cheap model), served by `GET /explanations/providers`. Requested models must be in the list; Azure
+  OpenAI takes any deployment name, has no default, and requires one.
+- Errors: 422 `missing_api_key` / `missing_azure_endpoint` / `missing_azure_deployment` /
+  `unsupported_model`; 502 `llm_auth_failed` (401/403), `llm_rate_limited` (429),
+  `azure_deployment_not_found` (Azure 404 / DeploymentNotFound), `llm_provider_error`; 504 `llm_timeout` (120 s).
 - Services take an injectable `httpx` transport / Gemini client factory; tests never call providers.
 
 ### Health checks

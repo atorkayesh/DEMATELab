@@ -6,7 +6,7 @@
 
 ## Decision
 
-As in the Qt app, users enter their own AI provider key (Gemini, OpenAI, Azure OpenAI, OpenRouter, Groq)
+As in the Qt app, users enter their own AI provider key (Gemini, OpenAI, Azure OpenAI, OpenRouter, Groq, and in the web app Anthropic)
 with each explanation request. The API uses the key once and never stores, logs, or returns it: it is a
 `SecretStr` hidden from `repr`, request validation errors log only field paths and error types, and
 provider error bodies are logged only after the key is removed. No provider key is configured in env files.

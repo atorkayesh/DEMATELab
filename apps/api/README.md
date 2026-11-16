@@ -62,7 +62,8 @@ and `error.code` is stable (`validation_error` with `error.fields` for invalid r
 | POST | `/api/v1/analysis/charts/heatmap?mode=standard\|cluster&dpi=100\|300` | `AnalysisRequest` → `image/png`; 422 `clustering_failed` in cluster mode when clustering is impossible. |
 | POST | `/api/v1/imports/matrix` | multipart `file` (.xlsx, ≤ 5 MB), `factor_count` → `{factor_names, matrix}`. |
 | POST | `/api/v1/imports/workbook` | multipart `file`, `factor_count`, `expert_names` (repeated) → `{factor_names, matrices: [{expert_name, matrix}], matched_by: "name" \| "order"}`. |
-| POST | `/api/v1/explanations` | `{analysis, provider, api_key, model?, azure_endpoint?}` → `{text, provider, model}`. Providers: `Gemini`, `OpenAI`, `Azure OpenAI`, `OpenRouter`, `Groq`. |
+| GET | `/api/v1/explanations/providers` | `{providers: [{id, label, models, default_model, free_text_model}]}`: the model catalogue (Azure OpenAI: no models, no default, free-text deployment name). |
+| POST | `/api/v1/explanations` | `{analysis, provider, api_key, model?, azure_endpoint?}` → `{text, provider, model}`. Providers: `Gemini`, `OpenAI`, `Azure OpenAI`, `OpenRouter`, `Groq`, `Anthropic`. A blank model uses the default; other models must be in the provider's list (422 `unsupported_model`); Azure needs a deployment name (422 `missing_azure_deployment`). |
 
 `AnalysisRequest`:
 

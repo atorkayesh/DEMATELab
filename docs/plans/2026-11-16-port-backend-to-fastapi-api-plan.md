@@ -91,6 +91,9 @@ cluster heatmap in `results_viewer_widget.py:439-789,1020-1123,1397-1545`; workb
      the worker's older one (`llm_worker.py:36-45`), which Qt never reaches from the GUI.
    - Exporting the cluster heatmap when clustering fails returns 422 with Qt's message instead of
      silently saving the standard heatmap (`results_viewer_widget.py:1076-1085,1519-1539`).
+   - Cluster heatmap cells are coloured by their ranked cluster label (Low … High), so each colour matches
+     its colourbar label; Qt colours by the raw KMeans id + 1 while labelling the colourbar by rank
+     (`results_viewer_widget.py:1087-1102`). Display only: the clustering itself is unchanged.
    Everything else that looks odd is kept as is and listed under Known Qt Behaviour Kept.
 9. The Inter fonts are copied into `apps/api/assets/fonts/` and registered at startup; no download
    (drop `font_loader.py`'s GitHub fallback).
@@ -157,7 +160,7 @@ experts: list[{name: str, weight: float, matrix: list[list[str]]}]   1..50; name
 | `POST /api/v1/weights/normalize` | `{weights: list[float]}` | corrected weights, or 422 "Expert weights must sum to 1." (`gui_app.py:64-101`; used by the web app at "Next: Create Matrix Editor") |
 | `POST /api/v1/analysis` | `AnalysisRequest` | `AnalysisResponseData` = `{result, summary, corrected_weights}` |
 | `POST /api/v1/analysis/export/xlsx` | `AnalysisRequest` | `dematel_results.xlsx` (binary download) |
-| `POST /api/v1/analysis/charts/causal-diagram?dpi=120\|300` | `AnalysisRequest` | `image/png` |
+| `POST /api/v1/analysis/charts/causal-diagram?dpi=100\|300` | `AnalysisRequest` | `image/png` |
 | `POST /api/v1/analysis/charts/heatmap?mode=standard\|cluster&dpi=100\|300` | `AnalysisRequest` | `image/png` |
 | `POST /api/v1/imports/matrix` | multipart: `file`, `factor_count` | `{factor_names: list[str] \| null, matrix: list[list[str]]}` |
 | `POST /api/v1/imports/workbook` | multipart: `file`, `factor_count`, `expert_names` (repeated) | `{factor_names \| null, matrices: [{expert_name, matrix}], matched_by: "name" \| "order"}` |

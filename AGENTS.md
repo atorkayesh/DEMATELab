@@ -1,13 +1,144 @@
-# Repository guidance
+# DEMATELab - Agent Guidelines
 
-## Setup and launch
-- The installable project is `DEMATELab/pyproject.toml`, not the repository root; Python must be >=3.10. From the root, install for development with `python3 -m pip install -e ./DEMATELab`.
-- Launch from the outer `DEMATELab/` directory with `python3 -m DEMATELab` (or the installed `DEMATELab` command). Both call `DEMATELab.gui_app:main`; running `gui_app.py` directly is not the entrypoint.
-- Keep that working directory: stepper icons and stylesheet URLs use relative `assets/icons/...` paths, while logos/fonts use package-relative `DEMATELab/DEMATELab/assets/`. These two asset directories are not interchangeable.
-- `DEMATELab.app` is a launcher, not a standalone distribution: it executes `/opt/miniconda3/bin/python3` against the adjacent source checkout.
+DEMATELab runs DEMATEL cause-and-effect analyses (classical, fuzzy, grey, fuzzy Z-DEMATEL) from expert
+judgments. It is being rebuilt as a web app in `apps/`; the original PySide6 desktop app stays in `qt-app/`
+as the legacy app and the numerical reference. This file covers the **whole-app workflow**:
 
-## Execution paths and editing traps
-Paths below are relative to `DEMATELab/DEMATELab/`.
+- **[`apps/api/AGENTS.md`](./apps/api/AGENTS.md)**: FastAPI, numerical parity, Python style, API testing.
+  **Read it before changing anything in `apps/api/`.**
+- `apps/web/`: the TanStack Start app (read [`apps/web/AGENTS.md`](./apps/web/AGENTS.md) before changing it)
+  ([Rebuild The DEMATELab UI In TanStack Start](./docs/plans/2026-11-16-rebuild-ui-in-tanstack-start-plan.md)).
+
+Human-facing setup is in [`README.md`](./README.md). Plans, decisions, reports, and research are in
+[`docs/`](./docs/); each folder has a `--do-not-delete` authoring guide to follow.
+
+---
+
+## How the App Fits Together
+
+```
+Browser ──► web (TanStack Start, :3000) ──► api (FastAPI, :50001, /api/v1/*)
+```
+
+- **api** is stateless: every analysis-derived endpoint (analysis, XLSX export, charts, AI explanation)
+  receives the full analysis request and recomputes it. Charts are PNGs rendered with matplotlib in the Qt
+  style. AI provider keys come with each request and are never stored
+  ([decision](./docs/decisions/2026-11-16-ai-keys-supplied-per-request.md)).
+- **Numerical parity:** for the same input, every number equals the Qt app's, proven by fixtures generated
+  from `qt-app/` (`scripts/generate_parity_fixtures.py`, see `apps/api/AGENTS.md`).
+- **Nginx** reverse-proxies web (`/`) and api (`/api/`) in production and is the only public service.
+
+### Repository layout
+
+```
+apps/api/       FastAPI app (see apps/api/AGENTS.md)
+apps/web/       TanStack Start app (Typeform-style flow on /, results, /status)
+nginx/          Production reverse proxy (HTTPS block commented out until deployment)
+qt-app/         Legacy PySide6 app, its own Makefile and Compose files (read-only reference)
+data/examples/  Sample workbooks
+scripts/        generate_parity_fixtures.py (runs against qt-app/, writes apps/api/tests/fixtures/)
+docs/           plans/, decisions/, reports/, research/ (each with an authoring guide)
+Makefile        Dev, check, and production entrypoints (make help)
+docker-compose-dev.yml / docker-compose-prod.yml
+```
+
+### `qt-app/` is read-only
+
+- `apps/` must never import from, read, or start anything in `qt-app/`. Port code by copying or rewriting
+  it and name the original file and lines.
+- Do not change `qt-app/` as part of `apps/` work. Only `scripts/generate_parity_fixtures.py` runs it.
+
+---
+
+## Running the App
+
+Run the app in Docker. The root `Makefile` is the entrypoint: `make help` lists every target
+([decision](./docs/decisions/2026-11-16-make-entrypoint-with-container-first-checks.md)).
+
+```bash
+make setup          # create apps/api/.env and apps/web/.env from their examples
+
+make dev            # docker compose -f docker-compose-dev.yml up -d --build --wait (api on :50001, web on :3000)
+make down           # stop and remove the dev containers
+make logs S=api     # follow logs
+make sh-api         # shell in dematelab-api
+
+make check-api      # ruff format --check, ruff check, pytest inside the dev container
+make test-api T="tests/parity_integration_test.py -v"
+make format
+
+make prod           # api (gunicorn), web, and Nginx on ${HTTP_PORT:-80}
+make prod-logs S=nginx
+```
+
+- make uses `docker` when installed, otherwise `podman`.
+- Ports are fixed: API 50001, web 3000. If another app holds them (for example ice2kg on the same
+  machine), `make dev` stops with a message; free the port and retry.
+- Web checks: `make check-web` runs `cd apps/web && pnpm run format:check && pnpm run lint && pnpm run
+  typecheck && pnpm run test` inside the web container.
+- The legacy Qt app keeps its own setup: `make -C qt-app dev` (noVNC at `http://localhost:6080`). Its dev
+  Compose project is also called `dematelab-dev`; run one of the two dev stacks at a time.
+
+### Docker services
+
+| Service | Container | Purpose | Dev host port | Prod host port |
+|---|---|---|---|---|
+| `web` | `dematelab-web` | TanStack Start app | 3000 | not published |
+| `api` | `dematelab-api` | FastAPI API | 50001 | not published |
+| `nginx` | `dematelab-nginx` | Reverse proxy (prod only) | – | `${HTTP_PORT:-80}` |
+
+### Environment files
+
+Each service has its own env file, created from the `.env.example` next to it (`make setup`); there is no
+root `.env` ([decision](./docs/decisions/2026-11-16-each-service-has-its-own-env-file.md)).
+
+| File | Used by | Holds |
+|---|---|---|
+| `apps/api/.env` | `api` | `APP_ENV` (Compose overrides it), `CORS_ORIGINS`, `WEB_CONCURRENCY` |
+| `apps/web/.env` | `web` | `VITE_APP_ENV`, `VITE_API_BASE_URL` (public: inlined into the bundle, never secrets) |
+| `qt-app/DEMATELab/.env` | legacy Qt containers | `VNC_PASSWORD`, `NOVNC_PORT`, … |
+
+On the VPS: `CORS_ORIGINS` set to the public origin, and **HTTPS enabled in Nginx before the AI
+explanation is used** (keys travel in request bodies). Never commit `.env` files.
+
+---
+
+## Development Workflow
+
+1. **Plan first.** Non-trivial work gets a plan in `docs/plans/`; significant choices get a decision record
+   in `docs/decisions/`.
+2. **Work in the right app.** Read its AGENTS.md first and follow its patterns.
+3. **Keep changes in scope**; preserve Qt behaviour unless a decision says otherwise.
+4. **Add or update tests** for every important function, route, service, or feature.
+5. **Keep every code file at or below 300 lines** (tests included; fixtures, lockfiles, and `.md` exempt).
+6. **Before committing:** run `make format` and `make check-api` (or `cd apps/api && uv run ruff format
+   --check . && uv run ruff check . && uv run pytest`), fix every failure, and re-run until they pass.
+7. **Update docs** when behaviour changes: the app's AGENTS.md for rules, README files for setup.
+
+---
+
+## Pre-Commit Checklist
+
+- [ ] Changes follow the app's AGENTS.md rules
+- [ ] Tests written or updated, and all checks pass (`make check-api`)
+- [ ] Parity fixtures regenerated from `qt-app/` if maths or Qt-derived behaviour changed
+- [ ] Every code file in `apps/` is at or below 300 lines
+- [ ] No hardcoded secrets; no AI keys in env files or logs
+- [ ] No imports or reads from `apps/` into `qt-app/`
+- [ ] Docs updated if behaviour or workflow changed
+
+---
+
+## Legacy Qt App (`qt-app/`)
+
+### Setup and launch
+- The installable project is `qt-app/DEMATELab/pyproject.toml`, not the repository root; Python must be >=3.10. From the root, install for development with `python3 -m pip install -e ./qt-app/DEMATELab`.
+- Launch from `qt-app/DEMATELab/` with `python3 -m DEMATELab` (or the installed `DEMATELab` command). Both call `DEMATELab.gui_app:main`; running `gui_app.py` directly is not the entrypoint.
+- Keep that working directory: stepper icons and stylesheet URLs use relative `assets/icons/...` paths, while logos/fonts use package-relative `qt-app/DEMATELab/DEMATELab/assets/`. These two asset directories are not interchangeable.
+- `qt-app/DEMATELab.app` is a launcher, not a standalone distribution: it executes `/opt/miniconda3/bin/python3` against the adjacent source checkout.
+
+### Execution paths and editing traps
+Paths below are relative to `qt-app/DEMATELab/DEMATELab/`.
 
 - **Duplicate definitions:** `gui_app.py` defines `StepperWidget`, `FloatStepperWidget`, `MainWindow`, and `main` twice. The later definitions override the earlier ones; locate the active definition before editing.
 - Analysis flows from `gui_app.py` through `analysis_service.run_analysis(AnalysisInput)` into the numerical engines. This service is the GUI-independent entrypoint for focused solver checks.
@@ -16,15 +147,15 @@ Paths below are relative to `DEMATELab/DEMATELab/`.
 - GUI XLSX/PNG exports are implemented in `results_viewer_widget.py`; they do not call `export_service.py`. Changing the latter alone will not change GUI exports.
 - AI requests run through `ExplanationWorker` in a `QThread`, wired and cleaned up in `results_viewer_widget.py`; provider requests live in `llm_explanation_service.py`.
 
-## Input contracts
+### Input contracts
 - `constants.py` owns linguistic maps. Standard scales end in `Extreme influence`; Z uses `Very high influence` plus reliability. Labels are case-sensitive after trimming.
 - `matrix_parsers.py` handles Excel imports: one sheet per expert for workbook imports, either an `n x n` body or an `(n+1) x (n+1)` labeled matrix. Named-import paths require matching row/column factor names and consistent names across sheets; comparisons are case-insensitive. Imported diagonals are forced to `No influence`.
 - Engine weights must sum to 1; the GUI's three-decimal rounding/tolerance correction is in `_normalize_weight_inputs`, not in `analysis_service.run_analysis`.
 
-## Verification
-- No automated tests, CI workflows, or lint/formatter/typecheck configuration is checked in. Do not assume `pytest` or other quality tools are installed.
-- Dependencies are locked in `DEMATELab/uv.lock` (used by the Docker images). After editing `DEMATELab/pyproject.toml`, run `uv lock` in `DEMATELab/`.
-- Docker: `make dev` / `make prod` (root `Makefile`, wrapping `docker compose -f docker-compose-<dev|prod>.yml --env-file DEMATELab/.env`) runs the GUI in a container served over noVNC at `http://localhost:6080`; `make logs|restart|shell|status|down` act on whichever setup is running. The container starts as root only so `DEMATELab/docker/start.sh` can give the `app` user the owner of `exports/`, then drops privileges. The app runs from `/workspace`, which links `assets/` back to `/app/assets` so the relative icon paths still resolve.
-- Minimum syntax check from the repository root: `python3 -m compileall -q DEMATELab/DEMATELab`. This does not verify numerical correctness or GUI behavior.
-- For behavior changes, launch the GUI and exercise the affected solver/import/export flow. Sample workbooks are in `Example data/`; AI explanation additionally requires a provider API key and network access.
+### Verification
+- The Qt app has no automated tests or lint configuration of its own; `scripts/generate_parity_fixtures.py` runs it to produce the API's parity fixtures.
+- Dependencies are locked in `qt-app/DEMATELab/uv.lock` (used by the Docker images). After editing `qt-app/DEMATELab/pyproject.toml`, run `uv lock` in `qt-app/DEMATELab/`.
+- Docker: `make -C qt-app dev` / `make -C qt-app prod` (`qt-app/Makefile`, wrapping `docker compose -f docker-compose-<dev|prod>.yml --env-file DEMATELab/.env` inside `qt-app/`) runs the GUI in a container served over noVNC at `http://localhost:6080`; `make -C qt-app logs|restart|shell|status|down` act on whichever setup is running. The container starts as root only so `qt-app/DEMATELab/docker/start.sh` can give the `app` user the owner of `exports/`, then drops privileges. The app runs from `/workspace`, which links `assets/` back to `/app/assets` so the relative icon paths still resolve.
+- Minimum syntax check from the repository root: `python3 -m compileall -q qt-app/DEMATELab/DEMATELab`. This does not verify numerical correctness or GUI behavior.
+- For behavior changes, launch the GUI and exercise the affected solver/import/export flow. Sample workbooks are in `data/examples/`; AI explanation additionally requires a provider API key and network access.
 - `font_loader.ensure_inter_fonts` may download Inter from GitHub if the package's `assets/fonts/Inter-Regular.ttf` is missing; download failures silently fall back to available fonts.

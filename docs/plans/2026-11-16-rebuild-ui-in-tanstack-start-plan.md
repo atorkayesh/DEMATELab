@@ -3,7 +3,7 @@
 **Date:** 16 November, 2026
 **Status:** Ready for implementation (after the backend plan's API contract is implemented)
 **Owner:** Youpele Michael (planned with Claude Code)
-**Created:** 2026-11-16 14:10 CET · **Last modified:** 2026-11-16 14:40 CET
+**Created:** 2026-11-16 14:10 CET · **Last modified:** 2026-11-16 15:20 CET
 **Inspected:** `/Users/youpele/DevWorld/FZJ/dematelab`, branch `restructure/apps-api-web`, commit `df78b5c`,
 clean worktree. Conventions and theme from `/Users/youpele/DevWorld/FZJ/ice2kg/apps/web`, inspected the
 same day.
@@ -51,9 +51,26 @@ same VPS, talking to the new API.
 
 ## Settled Decisions
 
-1. **One route for the workflow** (`/`), built like Qt as progressive cards: Analysis Setup → Factors
-   and Experts → Matrix Input → Results. Plus `/status` (API health, unlinked, as ice2kg) and a 404.
-   No auth, no `_authed` routes, no `.env.server`.
+1. **Typeform-style flow** (owner decision, 16 November 2026; replaces Qt's stacked cards). One
+   question per screen, centred, with a progress bar, Back and OK/Next buttons, and Enter to continue
+   (Shift+Enter / Back button to go back). The user can **go back to any earlier answer and change it**;
+   later answers are kept wherever they are still valid. Steps, in order:
+   1. Solver type · 2. Threshold method · 3. Number of experts · 4. Number of factors ·
+   5. Factor names · 6. Expert names and weights · 7…(6+k). One matrix step per expert ("Expert 2 of 3:
+   how does each factor influence the others?"), with that expert's import button and, on the first
+   matrix step, "Import All Experts from XLSX" · then a **Review and run** step (summary of all answers,
+   each with an "Edit" link that jumps to its step, plus "Run Analysis") · then **Results** (full-width
+   screen, not a single question; "Back to inputs" returns to Review).
+   - Route: `/` with a validated `step` search param (TanStack Router `validateSearch`, Zod), so the
+     browser Back/Forward buttons move between steps. Visiting a step whose prerequisites are not answered
+     redirects to the first unanswered step. Plus `/status` (API health, unlinked, as ice2kg) and a 404.
+     No auth, no `_authed` routes, no `.env.server`.
+   - A clickable step list (compact, in the header area) shows answered steps; any answered step can be
+     opened directly.
+   - Transitions: a short vertical slide/fade (`tw-animate-css`, ≤ 200 ms), disabled under
+     `prefers-reduced-motion`. Focus moves to the step's first input on every step change.
+   - Each step validates on Next with Qt's messages inline under the question; Next stays enabled and
+     shows the error (Typeform behaviour).
 2. **Client state** in one Zustand store (`store/analysis.store.ts`; add `zustand`): setup, factors,
    experts, matrices per expert, and the **request snapshot** used for the current results. Results,
    charts, exports and the AI explanation always use that snapshot, so editing inputs after a run never
@@ -70,15 +87,29 @@ same VPS, talking to the new API.
 6. **AI explanation output is plain text** (`whitespace-pre-wrap`), as in Qt. The API key lives only in
    the AI panel's component state (password input), is sent once per request, and is never put in the
    store, query keys, URLs or logs.
-7. **UX corrections over Qt** (safety only, no behaviour removed):
-   - "Generate Input Forms" asks for confirmation when later cards already hold data (Qt wipes silently).
-   - Changing between the standard and Z solver families shows Qt's warning text; on confirm the matrix
-     editor is **regenerated** (as the Qt message promises) and results are cleared; Cancel restores the
-     previous solver.
+7. **Changing earlier answers** (replaces Qt's "regenerate everything" behaviour):
+   - Threshold method or solver within the same family: matrices kept; results marked out of date.
+   - Solver across families (standard ↔ Z): Qt's warning text in a confirm dialog; on confirm all expert
+     matrices are reset to the new family's defaults; Cancel restores the previous solver.
+   - Number of factors: names and matrix cells of the remaining factors are kept; added factors get
+     `F{i}` names and default cells; removing factors asks for confirmation when the removed rows or
+     columns hold non-default cells.
+   - Number of experts: remaining experts keep names and matrices; new experts get `Expert {i}` and
+     default matrices; weights are reset to `/weights/defaults` for the new count (shown with a note);
+     removing experts with edited matrices asks for confirmation.
+   - Factor or expert names: rename in place; matrices kept.
+   - Any change after a run marks the results **out of date**: Results shows a banner "Your inputs changed
+     since this analysis. Run again to update." with a "Re-run" button; old results stay visible and keep
+     using their snapshot (Settled Decision 2) until re-run.
+   - **Start over** (owner decision): a quiet text button with a rotate icon at the far end of the
+     Back/OK row and next to "Back to inputs" on Results; hidden while nothing is answered. It opens a
+     confirm dialog ("Start over?" / "All answers, matrices and results will be cleared.", Cancel /
+     Start over); confirming clears the store and opens step 1 with the defaults.
+   UX corrections over Qt (safety only, no behaviour removed):
    - Cause/effect factor badges are auto-width pills, so long names are not clipped (Qt's fixed 28 px
      circles clip them).
-   - Validation errors appear inline next to the card's action button (Qt used modal dialogs); texts
-     are Qt's.
+   - Validation errors appear inline under the current question (Qt used modal dialogs); texts are
+     Qt's.
    - On-screen labels use the API's `result_type_label` and `threshold_method_label` (Z is labelled
      "Fuzzy Z-DEMATEL"; matrix tab names for Z read "Fuzzy Z …").
 8. **Matrix editor rendering**: native `<select>` per cell (fast, keyboard accessible, ignores the mouse
@@ -116,6 +147,10 @@ text/background pair for WCAG AA (4.5:1) with a contrast checker during Phase 2 
 the PR; adjust only the lightness if a pair fails.
 
 ## Parity Inventory (source: Qt, active code `gui_app.py:1227-2241`)
+
+The "Card" groupings below list Qt's content and texts; in the web app they are split into the
+Typeform steps of Settled Decision 1 (card subtitles become step helper text). Qt's buttons
+"Generate Input Forms" and "Next: Create Matrix Editor" become the steps' Next buttons.
 
 **Header**: "DEMATELab" with subtitle "Cause and Effect Analysis"; logo from
 `qt-app/DEMATELab/DEMATELab/assets/logo.png` converted to `public/logo.png`, `favicon.ico` and
@@ -160,7 +195,7 @@ Button "Run Analysis"; analysis errors inline in red under the editor.
 - Matrix tables and R/C table: factor names as row and column headers, 4 decimals, fuzzy `(l, m, u)` and
   grey `(lo, hi)` tuples; R/C columns `Factor | R | C | R+C | R-C` (crisp) or
   `Factor | R | C | Prominence | Relation` (tuples); horizontal scroll for wide tables; not sortable.
-- Causal Diagram: PNG (dpi 120) with zoom; "Total relation matrix is not available." placeholder.
+- Causal Diagram: PNG (dpi 100) with zoom; "Total relation matrix is not available." placeholder.
 - Heatmap: checkbox "Show cluster-based heatmap" switching `mode`; on a cluster error show Qt's
   "Could not generate cluster heatmap: {message}" and untick. "Export Cluster Heatmap to PNG" shows the
   same message on failure (no fallback file, see backend Settled Decision 8).
@@ -188,11 +223,14 @@ apps/web/
       ui/            shadcn: button, card, badge, input, select, tabs, checkbox, dialog, alert-dialog, separator, scroll-area
       general/       AppLayout, AppHeader, AppFooter, PageHeader, SectionCard, NumberStepper, InlineError, ZoomableImage, DownloadButton
       page-specific/
-        analysis/    SetupCard, FactorsExpertsCard, FactorNameList, ExpertWeightList, MatrixInputCard,
-                     ExpertTabs, MatrixGrid, MatrixCell, MatrixImportActions, ResultsCard, ExportBar,
+        analysis/    FlowShell, StepProgress, StepList, StepFrame, StepNavigation, SolverStep,
+                     ThresholdStep, ExpertCountStep, FactorCountStep, FactorNamesStep, ExpertWeightsStep,
+                     ExpertMatrixStep, ReviewStep, OutdatedResultsBanner, FactorNameList, ExpertWeightList,
+                     MatrixGrid, MatrixCell, MatrixImportActions, ResultsCard, ExportBar,
                      ResultTabs, SummaryPanel, StatBox, ConfigurationPanel, FactorBadgeGroup,
                      ProminenceRanking, MatrixTable, ScoresTable, CausalDiagramPanel, HeatmapPanel,
                      ExplanationPanel, AzureEndpointDialog, SolverChangeDialog, ResetConfirmDialog
+                     (matrix tabs replaced by one ExpertMatrixStep per expert)
         status/      ApiHealthCard, StatusRow
     constants/   api.constants.ts  layout.constants.ts  analysis.constants.ts  results.constants.ts
                  explanation.constants.ts  health.constants.ts  query.constants.ts
@@ -248,25 +286,33 @@ Done when `make dev` serves a blank page on 3000 and `make check-web` passes.
    Settled Decision 3; `analysis-request.utils.ts` builds the `AnalysisRequest` from store state.
 2. Service tests with `vi.stubGlobal("fetch")`, including 4xx error bodies and blob downloads.
 
-### Phase 4: Setup, factors and experts
+### Phase 4: Flow shell, setup, factors and experts
 
-1. `store/analysis.store.ts` with actions: `configureSetup`, `generateForms` (resets later steps),
-   `setFactorName`, `setExpertName`, `setExpertWeight`, `applyCorrectedWeights`, `createMatrixEditor`,
-   `setCell`, `applyImportedMatrix`, `applyImportedWorkbook`, `renameFactors`, `changeSolver`,
-   `setResults(snapshot, data)`, `clearResults`. Unit-tested.
-2. `SetupCard` with `NumberStepper` (clamping rules), selects from `/scales`, `SolverChangeDialog`,
-   `ResetConfirmDialog`.
-3. `FactorsExpertsCard` with name validation (`validation.utils.ts`, Qt messages) and weight correction
-   via `POST /weights/normalize`.
+1. `store/analysis.store.ts` with actions: `setSolver` (family check), `setThreshold`,
+   `setExpertCount`, `setFactorCount` (resize keeping existing data, Settled Decision 7), `setFactorName`,
+   `setExpertName`, `setExpertWeight`, `applyCorrectedWeights`, `setCell`, `applyImportedMatrix`,
+   `applyImportedWorkbook`, `renameFactors`, `setResults(snapshot, data)`, plus selectors
+   `isStepAnswered(step)`, `firstUnansweredStep`, `resultsOutdated` (current request ≠ snapshot).
+   Unit-tested, including every resize/keep rule.
+2. `FlowShell` (route component for `/`): reads `step` from search params, guards prerequisites,
+   renders `StepProgress`, `StepList`, the current step inside `StepFrame` (transition + focus), and
+   `StepNavigation` (Back, OK/Next, Enter / Shift+Enter shortcuts; disabled while a request runs).
+3. `SolverStep`, `ThresholdStep` (single-choice lists with keyboard letters A/B/C… as Typeform),
+   `ExpertCountStep`, `FactorCountStep` (`NumberStepper`, clamping rules), `SolverChangeDialog` and
+   `ResetConfirmDialog` (for removals that lose edited data).
+4. `FactorNamesStep` and `ExpertWeightsStep` with name validation (`validation.utils.ts`, Qt messages);
+   Next on `ExpertWeightsStep` calls `POST /weights/normalize` and writes the corrected weights back.
 
-### Phase 5: Matrix editor and import
+### Phase 5: Matrix steps, import, review and run
 
-1. `MatrixInputCard`, `ExpertTabs`, virtualised `MatrixGrid`, `MatrixCell` (native select, highlight,
-   disabled diagonal), keyboard: Tab order row-major, arrow keys handled by the native select.
+1. `ExpertMatrixStep` (one per expert; title "Expert {i} of {k}: {name}"), virtualised `MatrixGrid`,
+   `MatrixCell` (native select, highlight, disabled diagonal); keyboard: Tab order row-major, arrow keys
+   handled by the native select; Enter inside a select does not trigger Next.
 2. `MatrixImportActions` with hidden file inputs (`accept=".xlsx"`), import mutations, inline errors,
-   Z behaviour.
-3. "Run Analysis": validates again, builds the snapshot, calls `/analysis`, stores results, scrolls to
-   the results card; errors inline.
+   Z behaviour; "Import All Experts from XLSX" on the first matrix step fills every expert's step.
+3. `ReviewStep`: every answer with an Edit link to its step; "Run Analysis" validates everything, builds
+   the snapshot, calls `/analysis`, stores results and navigates to Results; errors inline on Review.
+4. `OutdatedResultsBanner` on Results with "Re-run".
 
 ### Phase 6: Results
 
@@ -307,7 +353,9 @@ make test-web T="src/store"       # focused runs
 
 Tests: store actions; name validation; weight normalisation service and error display; formatters;
 services (fetch stubs, Zod parsing, blob downloads, error bodies); components with Testing Library for
-each card's happy path and error texts, the solver-change dialog (cancel restores), Z hiding import-all,
+each step's happy path and error texts, step guards and Back/Next/Enter navigation, changing an earlier
+answer keeps later data (counts, names, matrices) and marks results out of date, the solver-change dialog
+(cancel restores), Z hiding import-all,
 results tabs switching, explanation key handling.
 
 Manual (in `make dev`, against the API): run every solver × threshold on a 4-factor matrix and compare
@@ -319,6 +367,9 @@ layout at 320 px, tablet and desktop; `make prod` and the same smoke test throug
 
 - Every item in the Parity Inventory works in the browser, with the Qt texts and the corrections in
   Settled Decision 7.
+- The flow is one question per step with progress, Back/Next, Enter shortcuts and browser Back/Forward;
+  any earlier answer can be changed and later answers are kept per Settled Decision 7; results show the
+  out-of-date banner after a change.
 - Theme matches the table; AA contrast for text pairs; usable at 320 px.
 - No computed DEMATEL value is produced in the browser; all come from the API.
 - API key never stored, logged or cached.

@@ -1,5 +1,9 @@
 # DEMATELab
 
+> **Rebuild in progress:** DEMATELab is being rebuilt as a web app in `apps/` (FastAPI API in
+> `apps/api`, TanStack Start UI in `apps/web`). See [Apps](#apps) below. The sections up to "Running with
+> Docker" describe the **legacy desktop app**, which now lives in `qt-app/`.
+
 A desktop application for cause-and-effect analysis using DEMATEL and its extensions. Built with Python and PySide6, it provides an interactive GUI for entering expert judgments, running the analysis, visualizing results, and generating AI-powered interpretations.
 
 ---
@@ -24,7 +28,7 @@ A desktop application for cause-and-effect analysis using DEMATEL and its extens
 
 ---
 
-## Installation
+## Installation (legacy Qt app)
 
 ### From GitHub
 
@@ -36,7 +40,7 @@ pip install git+https://github.com/atorkayesh/DEMATELab.git
 
 ```bash
 git clone https://github.com/atorkayesh/DEMATELab.git
-cd DEMATELab/DEMATELab
+cd DEMATELab/qt-app/DEMATELab
 pip install .
 ```
 
@@ -98,7 +102,9 @@ An API key is required. Keys are never stored — they are only held in memory f
 
 ---
 
-## Running with Docker
+## Running with Docker (legacy Qt app)
+
+The commands in this section belong to the legacy app in `qt-app/`: run them with `make -C qt-app <target>` from the repository root, or from inside `qt-app/` (the root `Makefile` now runs the rebuilt app, see [Apps](#apps)).
 
 The app can also run in a container and be used from a browser (via noVNC), with no local Python or Qt setup.
 
@@ -110,7 +116,7 @@ The app can also run in a container and be used from a browser (via noVNC), with
 
 Docker Engine 25 or newer and Docker Compose 2.24 or newer are required (current Docker Desktop includes both).
 
-All commands run from the repository root:
+All commands run from `qt-app/` (or as `make -C qt-app <target>` from the repository root):
 
 ```bash
 make dev       # build and start the dev setup, then print http://localhost:6080
@@ -129,7 +135,7 @@ Only one setup runs at a time, because both use the same port: `make dev` stops 
 | Image | `DEMATELab/Dockerfile.dev` (includes dev tools) | `DEMATELab/Dockerfile.prod` (runtime only) |
 | Source | Mounted from `DEMATELab/`; the app restarts when a `.py` file changes | Baked into the image; rebuild to update |
 | Password | None by default | `VNC_PASSWORD` required in `DEMATELab/.env` |
-| Exports | `./exports/` on the host | `dematelab-exports` Docker volume |
+| Exports | `qt-app/exports/` on the host | `dematelab-exports` Docker volume |
 | Address | `127.0.0.1:${NOVNC_PORT:-6080}` | `127.0.0.1:${NOVNC_PORT:-6080}` (`NOVNC_BIND` to change the interface) |
 
 Setup for production:
@@ -152,13 +158,36 @@ docker compose -f docker-compose-dev.yml --env-file DEMATELab/.env down
 For prod, use `docker-compose-prod.yml` instead and stop dev first. Leave out `--env-file DEMATELab/.env` if that file doesn't exist; it is needed so compose applies `NOVNC_PORT` and `NOVNC_BIND` from it.
 
 Notes:
-- In the app's file dialogs, the example workbooks are in `examples/` (read-only) and exports should be saved to `exports/`.
+- In the app's file dialogs, the example workbooks are in `examples/` (read-only, mounted from `data/examples/`) and exports should be saved to `exports/` (`qt-app/exports/` on the host).
 - Everyone who opens the URL shares the same app session, so the production setup suits one user at a time. noVNC traffic is not encrypted: before exposing it beyond `localhost`, put it behind a TLS reverse proxy with its own login. VNC passwords are limited to 8 characters.
 - Without a `VNC_PASSWORD`, `make prod` stops before starting. With plain `docker compose`, the prod container logs the error once and waits instead of restarting, and after about 2 minutes `docker compose ps` reports it as unhealthy.
 - Dev and prod share `DEMATELab/.env`, so setting `VNC_PASSWORD` for prod also adds a password to the dev session.
-- On Linux, the container runs the app as the owner of `exports/` (normally you), so exported files are yours. Keep the `exports/` folder that comes with the repository: if it is missing, Docker creates it owned by root and the app then runs as root, so exported files are owned by root. With rootless Docker or Podman the app also runs as root inside the container, which is your own user on the host, so exports are still yours.
+- On Linux, the container runs the app as the owner of `qt-app/exports/` (normally you), so exported files are yours. Keep the `qt-app/exports/` folder that comes with the repository: if it is missing, Docker creates it owned by root and the app then runs as root, so exported files are owned by root. With rootless Docker or Podman the app also runs as root inside the container, which is your own user on the host, so exports are still yours.
 - On Windows, dev reload works automatically with Docker Desktop's default WSL2 backend. If edits don't restart the app (for example with the Hyper-V backend), set `WATCHFILES_FORCE_POLLING=true` in `DEMATELab/.env`.
 - Dependencies are locked in `DEMATELab/uv.lock`; after changing `DEMATELab/pyproject.toml`, run `uv lock` in `DEMATELab/` and rebuild.
+
+## Apps
+
+The rebuilt DEMATELab runs in Docker with the root `Makefile` (`make help`). Requirements: Docker (Engine 25+,
+Compose 2.24+) and Make, as listed above.
+
+```bash
+make setup     # create apps/api/.env and apps/web/.env from their examples
+make dev       # start the API and the web app with hot reload
+make check-api # format check, lint, and tests inside the API container
+make down
+make prod      # production: API (gunicorn) and web behind Nginx on ${HTTP_PORT:-80}
+```
+
+- Web app: `http://localhost:3000` (details: [`apps/web/README.md`](apps/web/README.md)).
+- API: `http://localhost:50001/api/v1`, interactive docs at `http://localhost:50001/api/docs`. Endpoints,
+  request format, and local runs without Docker: [`apps/api/README.md`](apps/api/README.md).
+- Ports 50001 and 3000 are fixed; stop other apps using them first.
+- The API gives the same numbers as the Qt app for the same input: tests compare it with fixtures generated
+  from `qt-app/` (`scripts/generate_parity_fixtures.py`).
+- AI explanations use the key the user enters with each request; it is never stored. Enable HTTPS in
+  `nginx/nginx.prod.conf` before using them on a server.
+- The legacy Qt app is unchanged: `make -C qt-app dev` (see "Running with Docker (legacy Qt app)").
 
 ## License
 

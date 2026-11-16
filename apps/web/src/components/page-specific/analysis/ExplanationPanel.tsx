@@ -4,6 +4,13 @@ import { AzureEndpointDialog } from "@/components/page-specific/analysis/AzureEn
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AZURE_PROVIDER,
   DEFAULT_MODELS,
   EXPLANATION_STATUS,
@@ -72,24 +79,35 @@ export function ExplanationPanel({ snapshot }: { snapshot: AnalysisRequest }) {
         <p className="text-sm text-muted-foreground">{EXPLANATION_TEXT.NOTE}</p>
       </div>
       <div className="flex flex-wrap gap-3">
-        <label className={FIELD_CLASS}>
+        <div className={FIELD_CLASS}>
           {EXPLANATION_TEXT.ENGINE}
-          <select
+          <Select
             value={provider}
-            onChange={(event) => {
-              const next = event.target.value as Provider;
-              setProvider(next);
-              setModel(DEFAULT_MODELS[next]);
+            onValueChange={(next) => {
+              if (!next) return;
+              setProvider(next as Provider);
+              setModel(DEFAULT_MODELS[next as Provider]);
             }}
-            className="h-8 rounded-lg border border-input bg-card px-2"
           >
-            {PROVIDERS.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger
+              aria-label={EXPLANATION_TEXT.ENGINE}
+              className="h-8 w-full bg-card text-base max-sm:h-11 md:text-sm"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              {PROVIDERS.map((name) => (
+                <SelectItem
+                  key={name}
+                  value={name}
+                  className="text-base md:text-sm"
+                >
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <label className={FIELD_CLASS}>
           {EXPLANATION_TEXT.API_KEY}
           <Input

@@ -1,9 +1,16 @@
 import { memo } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAnalysisStore } from "@/store/analysis.store";
 
 /**
- * One judgement as a native select. It subscribes to its own cell only, so changing a cell
+ * One judgement as a themed shadcn select. It subscribes to its own cell only, so changing a cell
  * re-renders that cell and not the grid. Cells that differ from the default are highlighted; the
  * diagonal is fixed.
  */
@@ -34,25 +41,34 @@ export const MatrixCell = memo(function MatrixCell({
   const diagonal = row === column;
   const edited = !diagonal && value !== defaultLabel;
 
+  const options = terms.includes(value) ? terms : [value, ...terms];
+
   return (
-    <select
-      aria-label={`${rowName} → ${columnName}`}
+    <Select
       value={value}
       disabled={diagonal}
-      data-edited={edited || undefined}
-      data-autofocus={autoFocus || undefined}
-      onChange={(event) => setCell(expert, row, column, event.target.value)}
-      className={cn(
-        "h-full w-full truncate rounded-md border border-input bg-card px-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-muted disabled:text-muted-foreground",
-        edited && "bg-cell-edited font-medium",
-      )}
+      onValueChange={(next) => {
+        if (typeof next === "string") setCell(expert, row, column, next);
+      }}
     >
-      {!terms.includes(value) && <option value={value}>{value}</option>}
-      {terms.map((term) => (
-        <option key={term} value={term}>
-          {term}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger
+        aria-label={`${rowName} → ${columnName}`}
+        data-edited={edited || undefined}
+        data-autofocus={autoFocus || undefined}
+        className={cn(
+          "h-full w-full rounded-md bg-card px-1.5 text-base sm:text-sm disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
+          edited && "bg-cell-edited font-medium",
+        )}
+      >
+        <SelectValue className="truncate" />
+      </SelectTrigger>
+      <SelectContent alignItemWithTrigger={false} className="min-w-44">
+        {options.map((term) => (
+          <SelectItem key={term} value={term} className="text-base sm:text-sm">
+            {term}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 });

@@ -5,6 +5,7 @@ import { explain } from "@/services/explanation.service";
 import { useAnalysisStore } from "@/store/analysis.store";
 import { REQUEST } from "@/test/fixtures";
 import { renderWithQuery } from "@/test/render";
+import { pickOption } from "@/test/select";
 import { ApiError } from "@/utils/api.utils";
 
 vi.mock("@/services/explanation.service", () => ({ explain: vi.fn() }));
@@ -32,13 +33,11 @@ describe("ExplanationPanel", () => {
     expect(explain).not.toHaveBeenCalled();
   });
 
-  it("prefills the engine's default model and Azure's placeholder", () => {
+  it("prefills the engine's default model and Azure's placeholder", async () => {
     renderWithQuery(<ExplanationPanel snapshot={REQUEST} />);
     const model = screen.getByLabelText("Model") as HTMLInputElement;
     expect(model.value).toBe("gemini-2.5-pro");
-    fireEvent.change(screen.getByLabelText("Engine"), {
-      target: { value: "Azure OpenAI" },
-    });
+    await pickOption(screen.getByLabelText("Engine"), "Azure OpenAI");
     expect(model.value).toBe("gpt-4o-mini");
     expect(model.placeholder).toBe("Enter the Azure deployment name");
   });
@@ -100,9 +99,7 @@ describe("ExplanationPanel", () => {
       model: "d",
     });
     renderWithQuery(<ExplanationPanel snapshot={REQUEST} />);
-    fireEvent.change(screen.getByLabelText("Engine"), {
-      target: { value: "Azure OpenAI" },
-    });
+    await pickOption(screen.getByLabelText("Engine"), "Azure OpenAI");
     setKey();
     generate();
 

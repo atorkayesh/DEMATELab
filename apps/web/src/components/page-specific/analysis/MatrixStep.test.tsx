@@ -9,11 +9,12 @@ import {
   vi,
 } from "vitest";
 import { ExpertMatrixStep } from "@/components/page-specific/analysis/ExpertMatrixStep";
+import { MATRIX_GRID } from "@/constants/analysis.constants";
 import { importMatrix, importWorkbook } from "@/services/import.service";
 import { useAnalysisStore } from "@/store/analysis.store";
-import { MATRIX_GRID } from "@/constants/analysis.constants";
 import { SCALES, STANDARD_SCALE, Z_SCALE } from "@/test/fixtures";
 import { renderWithQuery, stubLayout } from "@/test/render";
+import { pickOption } from "@/test/select";
 import { ApiError } from "@/utils/api.utils";
 
 vi.mock("@/services/import.service", () => ({
@@ -50,7 +51,7 @@ describe("ExpertMatrixStep", () => {
     vi.mocked(importWorkbook).mockReset();
   });
 
-  it("shows one select per cell with a fixed diagonal and highlights edits", () => {
+  it("shows one select per cell with a fixed diagonal and highlights edits", async () => {
     setUp();
     renderWithQuery(<ExpertMatrixStep expert={0} scales={SCALES} {...nav()} />);
 
@@ -59,13 +60,14 @@ describe("ExpertMatrixStep", () => {
     );
     const cell = screen.getByRole("combobox", { name: "F1 → F2" });
     expect(
-      (screen.getByRole("combobox", { name: "F1 → F1" }) as HTMLSelectElement)
+      (screen.getByRole("combobox", { name: "F1 → F1" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
-    expect(cell.querySelectorAll("option")).toHaveLength(5);
+    fireEvent.click(cell);
+    expect(await screen.findAllByRole("option")).toHaveLength(5);
 
-    fireEvent.change(cell, { target: { value: H } });
-    expect(store().matrices[0][0][1]).toBe(H);
+    await pickOption(cell, H);
+    await waitFor(() => expect(store().matrices[0][0][1]).toBe(H));
     expect(cell.getAttribute("data-edited")).toBe("true");
   });
 
@@ -181,7 +183,7 @@ describe("ExpertMatrixStep", () => {
     ).toBeDefined();
   });
 
-  it("for Z hides Import All and explains why import is not available", () => {
+  it("for Z hides Import All and explains why import is not available", async () => {
     setUp("fuzzy_z_dematel", Z_SCALE);
     renderWithQuery(<ExpertMatrixStep expert={0} scales={SCALES} {...nav()} />);
 
@@ -195,10 +197,7 @@ describe("ExpertMatrixStep", () => {
     expect(
       screen.getByText(/supports only the standard linguistic scale/),
     ).toBeDefined();
-    expect(
-      screen
-        .getByRole("combobox", { name: "F1 → F2" })
-        .querySelectorAll("option"),
-    ).toHaveLength(2);
+    fireEvent.click(screen.getByRole("combobox", { name: "F1 → F2" }));
+    expect(await screen.findAllByRole("option")).toHaveLength(2);
   });
 });

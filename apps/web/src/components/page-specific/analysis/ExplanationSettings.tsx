@@ -14,12 +14,12 @@ const FIELD_CLASS = "flex min-w-0 flex-1 basis-48 flex-col gap-1 text-sm";
 const TRIGGER_CLASS = "h-8 w-full bg-card text-base max-sm:h-11 md:text-sm";
 const ITEM_CLASS = "text-base md:text-sm";
 
+const API_KEY_ID = "explanation-api-key";
+
 /**
  * AI provider, API key and model fields. The model is a select of the provider's models from the
  * API, except Azure OpenAI, where it is the user's free-text deployment name.
  */
-const API_KEY_ID = "explanation-api-key";
-
 export function ExplanationSettings({
   providers,
   provider,

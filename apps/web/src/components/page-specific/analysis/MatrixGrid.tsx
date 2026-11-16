@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { MatrixCell } from "@/components/page-specific/analysis/MatrixCell";
 import { MATRIX_GRID } from "@/constants/analysis.constants";
 import type { MatrixScale } from "@/interfaces/scales.interface";
+import { cn } from "@/lib/utils";
 import { useAnalysisStore } from "@/store/analysis.store";
 
 /** Frozen factor-name column: narrower on phones so more cells fit. */
@@ -61,7 +62,10 @@ export function MatrixGrid({
           style={{ height: MATRIX_GRID.HEADER_HEIGHT }}
         >
           <div
-            className={`sticky left-0 z-30 shrink-0 border-r bg-card ${ROW_HEADER_WIDTH}`}
+            className={cn(
+              "sticky left-0 z-30 shrink-0 border-r bg-card",
+              ROW_HEADER_WIDTH,
+            )}
           />
           <div className="relative shrink-0" style={{ width: bodyWidth }}>
             {virtualColumns.map((column) => (
@@ -78,7 +82,10 @@ export function MatrixGrid({
         </div>
         <div className="flex" style={{ height: bodyHeight }}>
           <div
-            className={`sticky left-0 z-10 shrink-0 border-r bg-card ${ROW_HEADER_WIDTH}`}
+            className={cn(
+              "sticky left-0 z-10 shrink-0 border-r bg-card",
+              ROW_HEADER_WIDTH,
+            )}
             style={{ height: bodyHeight }}
           >
             {virtualRows.map((row) => (

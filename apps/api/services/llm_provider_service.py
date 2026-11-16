@@ -21,7 +21,7 @@ from errors.llm_errors import (
 
 
 class LlmProviderService:
-    """Sends chat completion requests and wraps every failure in an `AppError`."""
+    """Sends chat completion and Anthropic Messages requests and wraps every failure in an `AppError`."""
 
     def __init__(self, transport: Optional[httpx.AsyncBaseTransport] = None):
         """

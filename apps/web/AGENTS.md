@@ -126,7 +126,7 @@ snapshot, never the current answers, so edits after a run never mix with old res
 persisted (no localStorage). `MatrixCell` subscribes to its own cell, and `setCell` copies only the
 changed row, so editing a cell does not re-render the grid.
 
-**Matrix editor:** native `<select>` per cell, rows and columns virtualised with
+**Matrix editor:** a shadcn `Select` per cell (tests pick options with `pickOption` from `test/select.ts`), rows and columns virtualised with
 `@tanstack/react-virtual` (fixed sizes in `MATRIX_GRID`), header row and column sticky. Only the open
 expert's step is mounted. Tests call `stubLayout()` (`test/render.tsx`) because jsdom has no layout.
 

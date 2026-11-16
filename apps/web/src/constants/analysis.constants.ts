@@ -163,4 +163,16 @@ export const START_OVER_TEXT = {
   DESCRIPTION: "All answers, matrices and results will be cleared.",
   CONFIRM: "Start over",
   CANCEL: "Cancel",
+  /** Shown under Back/OK once something is answered: nothing is saved between page loads. */
+  REFRESH_NOTE: "Your answers aren't saved. Refreshing the page starts over.",
+} as const;
+
+/** One-time toast on reaching the Experts step: answers live only in this page. */
+export const REFRESH_NOTICE = {
+  STEP: "experts",
+  STORAGE_KEY: "dematelab:refresh-notice-shown",
+  TITLE: "Heads up: your answers aren't saved",
+  DESCRIPTION:
+    "Refreshing or closing this page starts the analysis over. Use the Back button to change earlier answers.",
+  DURATION_MS: 8000,
 } as const;

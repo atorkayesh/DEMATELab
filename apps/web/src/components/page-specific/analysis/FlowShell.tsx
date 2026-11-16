@@ -6,6 +6,7 @@ import { StepProgress } from "@/components/page-specific/analysis/StepProgress";
 import { Button } from "@/components/ui/button";
 import { FLOW_TEXT } from "@/constants/analysis.constants";
 import { useFlowSteps } from "@/hooks/flow.hook";
+import { useRefreshNotice } from "@/hooks/refresh-notice.hook";
 import { useScales } from "@/hooks/scales.hook";
 import type { StepId } from "@/interfaces/analysis.interface";
 import type { ScalesData } from "@/interfaces/scales.interface";
@@ -48,6 +49,7 @@ export function FlowShell() {
  */
 function Flow({ scales }: { scales: ScalesData }) {
   const { step: requested } = useSearch({ from: "/" });
+  useRefreshNotice(requested);
   const navigate = useNavigate({ from: "/" });
   const markAnswered = useAnalysisStore((state) => state.markAnswered);
   const { steps, answered, hasResults } = useFlowSteps();

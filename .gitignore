@@ -9,5 +9,5 @@ __pycache__/
 
 # Files exported from the dev Docker container (the folder itself is kept, so Docker
 # never creates it as root on Linux)
-exports/*
-!exports/.gitkeep
+qt-app/exports/*
+!qt-app/exports/.gitkeep

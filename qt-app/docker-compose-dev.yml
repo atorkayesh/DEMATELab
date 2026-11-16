@@ -18,7 +18,7 @@ services:
     volumes:
       # Live source: edits under DEMATELab/DEMATELab/ restart the GUI.
       - ./DEMATELab:/app
-      - ./Example data:/workspace/examples:ro
+      - ../data/examples:/workspace/examples:ro
       - ./exports:/workspace/exports
     shm_size: 256mb
     restart: unless-stopped

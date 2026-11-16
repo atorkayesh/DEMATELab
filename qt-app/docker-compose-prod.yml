@@ -17,7 +17,7 @@ services:
       # Localhost by default; set NOVNC_BIND=0.0.0.0 only behind a TLS reverse proxy or firewall.
       - "${NOVNC_BIND:-127.0.0.1}:${NOVNC_PORT:-6080}:6080"
     volumes:
-      - ./Example data:/workspace/examples:ro
+      - ../data/examples:/workspace/examples:ro
       - dematelab-exports:/workspace/exports
     shm_size: 256mb
     restart: unless-stopped

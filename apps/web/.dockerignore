@@ -1,0 +1,26 @@
+# Dependencies (installed in the image)
+node_modules
+# Note: pnpm-lock.yaml is NOT ignored - needed for reproducible builds
+
+# Build output
+.output
+.nitro
+.tanstack
+.vinxi
+dist
+
+# Environment files: .env is kept, because the production build reads its VITE_* values
+# (public by design: they end up in the browser bundle). Never put secrets in apps/web/.env.
+.env.*
+
+# Testing
+coverage
+
+# Docker
+Dockerfile.*
+.dockerignore
+
+# Misc
+.DS_Store
+*.log
+.vscode

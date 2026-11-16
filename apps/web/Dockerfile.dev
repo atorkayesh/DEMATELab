@@ -1,0 +1,19 @@
+FROM node:24-slim
+
+# Keep in sync with "packageManager" in package.json
+ARG PNPM_VERSION=12.9.1
+RUN npm install -g pnpm@${PNPM_VERSION}
+
+WORKDIR /app
+
+# Install dependencies from the lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Copy project files
+COPY . .
+
+EXPOSE 3000
+
+# Development: Vite dev server with hot reload, reachable from outside the container
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]

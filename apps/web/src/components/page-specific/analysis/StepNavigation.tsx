@@ -1,0 +1,71 @@
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  InfoIcon,
+  LoaderCircleIcon,
+} from "lucide-react";
+import { StartOverButton } from "@/components/page-specific/analysis/StartOverButton";
+import { Button } from "@/components/ui/button";
+import { FLOW_TEXT, START_OVER_TEXT } from "@/constants/analysis.constants";
+import { useAnalysisStore } from "@/store/analysis.store";
+
+/** Back and OK/Next under a question, Start over at the far end; OK submits the step's form (Enter does the same). */
+export function StepNavigation({
+  onBack,
+  nextLabel = FLOW_TEXT.NEXT,
+  pending,
+  autoFocus = false,
+}: {
+  onBack: (() => void) | null;
+  nextLabel?: string;
+  pending: boolean;
+  /** Mark OK as the step's initial focus (see StepFrame). */
+  autoFocus?: boolean;
+}) {
+  const hasData = useAnalysisStore(
+    (state) => state.answered.length > 0 || state.results !== null,
+  );
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="max-sm:h-11"
+        onClick={() => onBack?.()}
+        disabled={!onBack || pending}
+      >
+        <ArrowLeftIcon data-icon="inline-start" />
+        {FLOW_TEXT.BACK}
+      </Button>
+      <Button
+        type="submit"
+        size="lg"
+        className="max-sm:h-11"
+        disabled={pending}
+        aria-busy={pending}
+        data-autofocus={autoFocus || undefined}
+      >
+        {pending ? (
+          <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
+        ) : (
+          <CheckIcon data-icon="inline-start" />
+        )}
+        {nextLabel}
+      </Button>
+      <span className="hidden text-xs text-muted-foreground sm:pointer-fine:inline">
+        {FLOW_TEXT.KEYBOARD_HINT}
+      </span>
+      <div className="ml-auto flex">
+        <StartOverButton disabled={pending} />
+      </div>
+      {hasData && (
+        <p className="flex basis-full items-center gap-1.5 text-xs text-muted-foreground">
+          <InfoIcon className="size-3.5 shrink-0" aria-hidden="true" />
+          {START_OVER_TEXT.REFRESH_NOTE}
+        </p>
+      )}
+    </div>
+  );
+}

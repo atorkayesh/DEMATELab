@@ -1,0 +1,7 @@
+{
+ "kind": "matrix",
+ "file": "matrix_numeric_cell.xlsx",
+ "factor_count": 3,
+ "expert_names": null,
+ "error_message": "Uploaded sheet: Invalid matrix value found: '3'. Allowed values are either \"No influence, Low influence, Medium influence, High influence, Extreme influence\"."
+}

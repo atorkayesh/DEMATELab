@@ -1,0 +1,7 @@
+{
+ "kind": "matrix",
+ "file": "matrix_blank_names.xlsx",
+ "factor_count": 3,
+ "expert_names": null,
+ "error_message": "Uploaded sheet: Uploaded sheet: Factor names cannot be blank."
+}

@@ -1,0 +1,26 @@
+{
+ "kind": "matrix",
+ "file": "matrix_plain_3x3.xlsx",
+ "factor_count": 3,
+ "expert_names": null,
+ "expected": {
+  "factor_names": null,
+  "matrix": [
+   [
+    "No influence",
+    "Low influence",
+    "High influence"
+   ],
+   [
+    "Medium influence",
+    "No influence",
+    "Extreme influence"
+   ],
+   [
+    "Low influence",
+    "Medium influence",
+    "No influence"
+   ]
+  ]
+ }
+}

@@ -1,0 +1,40 @@
+{
+ "kind": "matrix",
+ "file": "matrix_labelled_4x4.xlsx",
+ "factor_count": 4,
+ "expert_names": null,
+ "expected": {
+  "factor_names": [
+   "Alpha",
+   "Beta",
+   "Gamma",
+   "Delta"
+  ],
+  "matrix": [
+   [
+    "No influence",
+    "Low influence",
+    "Medium influence",
+    "High influence"
+   ],
+   [
+    "Extreme influence",
+    "No influence",
+    "Low influence",
+    "Medium influence"
+   ],
+   [
+    "High influence",
+    "Extreme influence",
+    "No influence",
+    "Low influence"
+   ],
+   [
+    "Medium influence",
+    "High influence",
+    "Extreme influence",
+    "No influence"
+   ]
+  ]
+ }
+}

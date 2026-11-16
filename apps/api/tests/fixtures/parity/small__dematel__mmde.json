@@ -1,0 +1,210 @@
+{
+ "request": {
+  "solver_type": "dematel",
+  "threshold_method": "mmde",
+  "factors": [
+   "Cost",
+   "Quality",
+   "Time"
+  ],
+  "experts": [
+   {
+    "name": "Expert 1",
+    "weight": 0.6,
+    "matrix": [
+     [
+      "High influence",
+      "Low influence",
+      "High influence"
+     ],
+     [
+      "Medium influence",
+      "No influence",
+      "Extreme influence"
+     ],
+     [
+      "Low influence",
+      "Medium influence",
+      "No influence"
+     ]
+    ]
+   },
+   {
+    "name": "Expert 2",
+    "weight": 0.4,
+    "matrix": [
+     [
+      "No influence",
+      "Medium influence",
+      "Low influence"
+     ],
+     [
+      "High influence",
+      "No influence",
+      "Medium influence"
+     ],
+     [
+      "Extreme influence",
+      "Low influence",
+      "No influence"
+     ]
+    ]
+   }
+  ]
+ },
+ "numpy_version": "2.5.4",
+ "corrected_weights": [
+  0.6,
+  0.4
+ ],
+ "result": {
+  "factors": [
+   "Cost",
+   "Quality",
+   "Time"
+  ],
+  "expert_weights": [
+   0.6,
+   0.4
+  ],
+  "direct_matrix": [
+   [
+    0.0,
+    1.4,
+    2.1999999999999997
+   ],
+   [
+    2.4000000000000004,
+    0.0,
+    3.2
+   ],
+   [
+    2.2,
+    1.6,
+    0.0
+   ]
+  ],
+  "normalized_matrix": [
+   [
+    0.0,
+    0.24999999999999997,
+    0.3928571428571428
+   ],
+   [
+    0.4285714285714286,
+    0.0,
+    0.5714285714285714
+   ],
+   [
+    0.39285714285714285,
+    0.2857142857142857,
+    0.0
+   ]
+  ],
+  "total_matrix": [
+   [
+    0.7764023210831721,
+    0.7690522243713731,
+    1.1373307543520308
+   ],
+   [
+    1.386460348162476,
+    0.7953578336557059,
+    1.5705996131528046
+   ],
+   [
+    1.0940038684719535,
+    0.8150870406189553,
+    0.8955512572533848
+   ]
+  ],
+  "r": [
+   2.682785299806576,
+   3.7524177949709863,
+   2.8046421663442933
+  ],
+  "c": [
+   3.2568665377176016,
+   2.379497098646034,
+   3.6034816247582206
+  ],
+  "prominence": [
+   5.939651837524178,
+   6.1319148936170205,
+   6.408123791102514
+  ],
+  "relation": [
+   -0.5740812379110256,
+   1.372920696324952,
+   -0.7988394584139273
+  ],
+  "cause_group": [
+   "Quality"
+  ],
+  "effect_group": [
+   "Cost",
+   "Time"
+  ],
+  "threshold_method": "mmde",
+  "threshold_value": 0.7690522243713731
+ },
+ "crisp_total_matrix": [
+  [
+   0.7764023210831721,
+   0.7690522243713731,
+   1.1373307543520308
+  ],
+  [
+   1.386460348162476,
+   0.7953578336557059,
+   1.5705996131528046
+  ],
+  [
+   1.0940038684719535,
+   0.8150870406189553,
+   0.8955512572533848
+  ]
+ ],
+ "summary_order": [
+  2,
+  1,
+  0
+ ],
+ "strongest_relation": 1.372920696324952,
+ "cluster": {
+  "labels_named": [
+   [
+    "No influence",
+    "Low",
+    "Low-to-Medium"
+   ],
+   [
+    "Medium-to-High",
+    "No influence",
+    "High"
+   ],
+   [
+    "Low-to-Medium",
+    "Low",
+    "No influence"
+   ]
+  ],
+  "labels_numeric": [
+   [
+    -1,
+    1,
+    2
+   ],
+   [
+    0,
+    -1,
+    3
+   ],
+   [
+    2,
+    1,
+    -1
+   ]
+  ]
+ }
+}

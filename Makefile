@@ -1,109 +1,206 @@
-# Shortcuts for the DEMATELab Docker setups. Each target runs a plain `docker compose`
-# command (echoed as it runs; also listed in README.md, "Running with Docker").
-# Run from the repository root. Needs Docker (Compose 2.24+) and make.
+# DEMATELab: dev, check, and production entrypoints for the rebuilt app (apps/). `make help` lists
+# every target. The legacy Qt app has its own Makefile: make -C qt-app dev (see README.md).
 #
-#   make dev | make prod     build and start one setup (stopping the other one first)
-#   make logs | restart | shell | status | down
-#                            act on whichever setup is running
+# Container first: the stack and every check run in Docker, so the host needs only Docker and
+# make. Each target wraps a plain docker compose, uv, or pnpm command (make echoes it), and those
+# commands keep working without make.
 #
-# Only one setup runs at a time: both publish the same port. To pick one explicitly,
-# add MODE=dev or MODE=prod, e.g. `make logs MODE=prod`.
+#   make dev      start the api (and web, once apps/web exists) with hot reload
+#   make check    the pre-commit checks, inside the dev containers
+#   make prod     start production on the VPS (Nginx is the only public entry)
+#
+# Narrow some targets with S=<service> (logs, restart) or T=<args> (test-api, test-web).
 
-APP          := DEMATELab
-PROJECT      := dematelab
-SERVICE      := dematelab
-ENV_FILE     := DEMATELab/.env
-DEFAULT_PORT := 6080
+# Each service has its own env file (make setup creates it from its .env.example). Files whose
+# .env.example does not exist yet (apps/web before the frontend plan) are skipped.
+ENV_FILES := apps/api/.env apps/web/.env
 
-# DEMATELab's .env sits next to its Dockerfiles, not next to the compose files, so pass
-# it to compose for ${NOVNC_PORT} and ${NOVNC_BIND} too (env_file only feeds the container).
-COMPOSE_ENV_FILE = $(if $(wildcard $(ENV_FILE)), --env-file $(ENV_FILE))
+# Fixed ports, the same inside and outside the containers. These values only feed the printed URLs
+# and the port checks.
+override WEB_PORT := 3000
+override API_PORT := 50001
 
-compose = docker compose -f docker-compose-$(1).yml$(COMPOSE_ENV_FILE)
-
-# ID of the dev or prod container if it exists (running or stopped), otherwise empty.
-container = $(shell docker ps -aq --filter 'name=^$(PROJECT)-$(1)$$' 2>/dev/null)
-
-# Stop and remove one setup if it exists. Uses the compose project name, so it works
-# even without the setup's .env file.
-stop = if [ -n "$(call container,$(1))" ]; then echo "Stopping the $(1) setup"; docker compose -p $(PROJECT)-$(1) down; fi
-
-# Which setup the instance commands act on: dev, prod, both, or none. Only a MODE given on
-# the make command line counts, so an unrelated MODE variable in your shell is ignored.
-ifneq ($(origin MODE),command line)
-MODE := $(if $(call container,dev),$(if $(call container,prod),both,dev),$(if $(call container,prod),prod,none))
-endif
-ifeq ($(filter dev prod both none,$(MODE)),)
-$(error MODE must be dev or prod, not '$(MODE)')
+# Container engine: docker when installed, otherwise podman (the VPS). Override with
+# `make DOCKER=podman <target>` or `export DOCKER=...`.
+ifeq ($(origin DOCKER),undefined)
+DOCKER := $(shell command -v docker >/dev/null 2>&1 && echo docker || echo podman)
 endif
 
-# Shell command printing a setting from $(ENV_FILE) the way compose reads it: the last
-# occurrence, without quotes, carriage returns, or a trailing comment.
-read_env = sed -n 's/^$(1)=//p' $(ENV_FILE) 2>/dev/null | tail -n 1 | tr -d "\"'\r" | sed -e 's/[[:space:]][[:space:]]*\#.*//' -e 's/[[:space:]]*$$//'
+# Web is a regular service in both compose files; web targets still check that apps/web exists first.
+WEB_READY := $(wildcard apps/web/package.json)
 
-# Same precedence as compose: shell environment, then $(ENV_FILE), then the default.
-NOVNC_PORT ?= $(or $(shell $(call read_env,NOVNC_PORT)),$(DEFAULT_PORT))
-URL = http://localhost:$(NOVNC_PORT)
+DEV  := $(DOCKER) compose -f docker-compose-dev.yml
+PROD := $(DOCKER) compose -f docker-compose-prod.yml
+
+DEV_PROJECT   := dematelab-dev
+API_CONTAINER := dematelab-api
+WEB_CONTAINER := dematelab-web
+
+# -t only when a terminal is attached, so targets also work from scripts and pipes.
+TTY      := $(shell [ -t 0 ] && echo -t)
+API_EXEC := $(DOCKER) exec -i $(TTY) $(API_CONTAINER)
+WEB_EXEC := $(DOCKER) exec -i $(TTY) $(WEB_CONTAINER)
+
+# Checks need the dev containers: prod uses the same container names, but its images have no dev tools.
+require_dev = @test "$$($(DOCKER) inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' $(1) 2>/dev/null)" = "true $(DEV_PROJECT)" \
+	|| { echo "→ $(1) is not running from docker-compose-dev.yml (make dev)" >&2; exit 1; }
+
+# Web targets explain themselves until apps/web exists.
+require_web = @test -n "$(WEB_READY)" \
+	|| { echo "→ apps/web/package.json does not exist yet: the web app comes with the frontend plan (docs/plans/)" >&2; exit 1; }
+
+# Fail before Compose starts when a fixed port is taken by something else (for example another app
+# using 3000/50001). Reuses a running dev container that already publishes the port.
+require_port = @if [ "$$($(DOCKER) inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' $(2) 2>/dev/null)" = "true $(DEV_PROJECT)" ] \
+	&& $(DOCKER) port $(2) $(1)/tcp 2>/dev/null | grep -q ':$(1)$$'; then :; \
+	else \
+		occupied=false; \
+		if command -v nc >/dev/null 2>&1; then \
+			nc -z localhost $(1) >/dev/null 2>&1 && occupied=true; \
+		elif command -v ss >/dev/null 2>&1; then \
+			ss -H -ltn 'sport = :$(1)' | grep -q . && occupied=true; \
+		else \
+			echo "→ checking fixed ports requires nc (macOS/Linux) or ss (Linux); install one and retry" >&2; exit 1; \
+		fi; \
+		if [ "$$occupied" = true ]; then \
+			echo "→ port $(1) is already in use; free it and retry (DEMATELab uses fixed ports, see AGENTS.md)" >&2; \
+			exit 1; \
+		fi; \
+	fi
 
 .DEFAULT_GOAL := help
-.PHONY: help dev prod logs restart shell status down check-running check-prod-env
+.PHONY: help setup urls dev api web down restart ps logs rebuild sh-api sh-web \
+	check check-api check-web test test-api test-web lint typecheck format install \
+	prod prod-down prod-restart prod-ps prod-logs _api-up _web-up
 
-help:
-	@echo "$(APP) Docker shortcuts (run from the repository root):"
-	@echo "  make dev       build and start the dev setup (reloads on code changes)"
-	@echo "  make prod      build and start the prod setup (needs VNC_PASSWORD in $(ENV_FILE))"
-	@echo "  make logs      follow the logs of the running setup"
-	@echo "  make restart   restart the running setup"
-	@echo "  make shell     open a shell in the running setup"
-	@echo "  make status    show which setup is running"
-	@echo "  make down      stop and remove the running setup"
-	@echo "dev and prod stop each other first. Add MODE=dev or MODE=prod to pick one explicitly."
+##@ Help
 
-dev:
-	@$(call stop,prod)
-	$(call compose,dev) up -d --build --wait
-	@echo "$(APP) (dev) is running at $(URL)"
+help: ## List every target
+	@awk 'BEGIN {FS = ":.*## "} /^##@/ {printf "\n%s\n", substr($$0, 5)} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo
+	@echo "Narrow with S=<service> (logs, restart, prod-logs, prod-restart) or T=<args> (test-api, test-web)."
+	@echo "Legacy Qt app: make -C qt-app help"
 
-prod: check-prod-env
-	@$(call stop,dev)
-	$(call compose,prod) up -d --build --wait
-	@echo "$(APP) (prod) is running at $(URL)"
+##@ Setup
 
-logs: check-running
-	$(call compose,$(MODE)) logs -f --tail=200
+setup: ## Create each service's .env from its .env.example (never overwrites; skips missing examples)
+	@for f in $(ENV_FILES); do \
+		if [ -f $$f ]; then echo "→ $$f already exists, left unchanged"; \
+		elif [ ! -f $$f.example ]; then echo "→ $$f.example does not exist yet, skipped"; \
+		else cp $$f.example $$f && echo "→ created $$f from $$f.example"; fi; \
+	done
 
-restart: check-running
-	$(call compose,$(MODE)) restart
+##@ Development stack
 
-shell: check-running
-	$(call compose,$(MODE)) exec -u app $(SERVICE) bash
+dev: ## Start the api (and web once apps/web exists) with hot reload (detached; then make logs)
+	$(call require_port,$(API_PORT),$(API_CONTAINER))
+	$(if $(WEB_READY),$(call require_port,$(WEB_PORT),$(WEB_CONTAINER)))
+	$(DEV) up -d --build --wait
+	@$(MAKE) --no-print-directory urls
 
-status:
-	@if [ "$(MODE)" = none ]; then \
-	  echo "Nothing is running. Start it with 'make dev' or 'make prod'."; \
-	else \
-	  docker ps -a --filter 'name=^$(PROJECT)-(dev|prod)$$' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'; \
-	fi
+api: ## Start only the api
+	$(call require_port,$(API_PORT),$(API_CONTAINER))
+	$(DEV) up -d --build --wait api
+	@echo "→ API docs http://localhost:$(API_PORT)/api/docs"
 
-down:
-	@if [ "$(MODE)" = none ]; then echo "Nothing is running."; fi
-	@$(if $(filter dev both,$(MODE)),$(call stop,dev),true)
-	@$(if $(filter prod both,$(MODE)),$(call stop,prod),true)
+web: ## Start the web app (and the api it needs)
+	$(require_web)
+	$(call require_port,$(API_PORT),$(API_CONTAINER))
+	$(call require_port,$(WEB_PORT),$(WEB_CONTAINER))
+	$(DEV) up -d --build --wait web
+	@$(MAKE) --no-print-directory urls
 
-check-running:
-	@case "$(MODE)" in \
-	  none) echo "Nothing is running. Start it with 'make dev' or 'make prod'."; exit 1 ;; \
-	  both) echo "Both dev and prod exist; pick one with MODE=dev or MODE=prod."; exit 1 ;; \
-	esac
+down: ## Stop and remove the dev containers
+	$(DEV) down
 
-check-prod-env:
-	@if [ ! -f $(ENV_FILE) ]; then \
-	  echo "Missing $(ENV_FILE): copy $(ENV_FILE).example to $(ENV_FILE) and set VNC_PASSWORD."; exit 1; \
-	fi
-	@password="$$($(call read_env,VNC_PASSWORD))"; \
-	if [ -z "$$password" ]; then \
-	  echo "VNC_PASSWORD is empty in $(ENV_FILE); the prod setup requires a password."; exit 1; \
-	fi; \
-	if [ $${#password} -gt 8 ]; then \
-	  echo "Note: VNC passwords are limited to 8 characters; only the first 8 are checked."; \
-	fi
+restart: ## Restart the dev services, or one with S=api|web
+	$(DEV) restart $(S)
+
+ps: ## Show the dev containers and their health
+	$(DEV) ps
+
+logs: ## Follow dev logs, or one service's with S=api|web
+	$(DEV) logs -f --tail=100 $(S)
+
+rebuild: ## Rebuild the dev images and containers (after dependency changes)
+	$(call require_port,$(API_PORT),$(API_CONTAINER))
+	$(DEV) up -d --build --force-recreate --renew-anon-volumes --wait
+	@$(MAKE) --no-print-directory urls
+
+urls:
+	@$(if $(WEB_READY),echo "→ Web           http://localhost:$(WEB_PORT)",echo "→ Web           not yet (apps/web comes with the frontend plan)")
+	@echo "→ API docs      http://localhost:$(API_PORT)/api/docs"
+	@echo "→ API health    http://localhost:$(API_PORT)/api/v1/health"
+
+##@ Shells
+
+sh-api: ## Open a shell in the api container
+	$(DOCKER) exec -i $(TTY) $(API_CONTAINER) bash
+
+sh-web: ## Open a shell in the web container
+	$(require_web)
+	$(DOCKER) exec -i $(TTY) $(WEB_CONTAINER) bash
+
+##@ Checks (inside the dev containers)
+
+check: check-api check-web ## All pre-commit checks for both apps
+
+check-api: _api-up ## API checks: Ruff format check, Ruff lint, pytest
+	$(API_EXEC) uv run ruff format --check .
+	$(API_EXEC) uv run ruff check .
+	$(API_EXEC) uv run pytest
+
+check-web: _web-up ## Web checks: format check, lint, typecheck, tests
+	$(WEB_EXEC) pnpm run format:check
+	$(WEB_EXEC) pnpm run lint
+	$(WEB_EXEC) pnpm run typecheck
+	$(WEB_EXEC) pnpm run test
+
+test: test-api test-web ## Run the api and web tests
+
+test-api: _api-up ## Run pytest; T=<pytest args>, e.g. T="tests/parity_integration_test.py -v"
+	$(API_EXEC) uv run pytest $(T)
+
+test-web: _web-up ## Run the web tests; T=<filter>
+	$(WEB_EXEC) pnpm run test $(T)
+
+lint: _api-up ## Lint both apps (Ruff; the web linter once apps/web exists)
+	$(API_EXEC) uv run ruff check .
+	$(if $(WEB_READY),$(WEB_EXEC) pnpm run lint,@echo "→ apps/web does not exist yet, web lint skipped")
+
+typecheck: _web-up ## Typecheck the web app
+	$(WEB_EXEC) pnpm run typecheck
+
+format: _api-up ## Format both apps (Ruff; the web formatter once apps/web exists); run before committing
+	$(API_EXEC) uv run ruff format .
+	$(if $(WEB_READY),$(WEB_EXEC) pnpm run format,@echo "→ apps/web does not exist yet, web format skipped")
+
+_api-up:
+	$(call require_dev,$(API_CONTAINER))
+
+_web-up:
+	$(require_web)
+	$(call require_dev,$(WEB_CONTAINER))
+
+##@ Dependencies
+
+install: _api-up ## Install dependencies in the dev containers from the lockfiles (after a pull)
+	$(API_EXEC) uv sync --frozen
+	$(if $(WEB_READY),$(WEB_EXEC) pnpm install --frozen-lockfile,@echo "→ apps/web does not exist yet, web install skipped")
+
+##@ Production (on the VPS)
+
+prod: ## Build and start production (Nginx on HTTP_PORT, default 80, is the only public entry)
+	$(PROD) up -d --build --wait
+
+prod-down: ## Stop and remove the production containers
+	$(PROD) down
+
+prod-restart: ## Restart production, or one service with S=nginx|web|api
+	$(PROD) restart $(S)
+
+prod-ps: ## Show the production containers and their health
+	$(PROD) ps
+
+prod-logs: ## Follow production logs, or one service's with S=nginx|web|api
+	$(PROD) logs -f --tail=100 $(S)

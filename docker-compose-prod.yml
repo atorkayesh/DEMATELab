@@ -1,35 +1,57 @@
-name: dematelab-prod
+name: dematelab
 
 services:
-  dematelab:
-    container_name: dematelab-prod
-    image: dematelab:prod
+  web:
+    container_name: dematelab-web
     build:
-      context: ./DEMATELab
+      context: ./apps/web
       dockerfile: Dockerfile.prod
     env_file:
-      # Must define VNC_PASSWORD; without it the container waits and reports unhealthy.
-      - path: ./DEMATELab/.env
-        required: true
-    environment:
-      - APP_MODE=prod
-    ports:
-      # Localhost by default; set NOVNC_BIND=0.0.0.0 only behind a TLS reverse proxy or firewall.
-      - "${NOVNC_BIND:-127.0.0.1}:${NOVNC_PORT:-6080}:6080"
-    volumes:
-      - ./Example data:/workspace/examples:ro
-      - dematelab-exports:/workspace/exports
-    shm_size: 256mb
+      - ./apps/web/.env
+    depends_on:
+      - api
+    networks:
+      - app-network
     restart: unless-stopped
+
+  api:
+    container_name: dematelab-api
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.prod
+    # API settings come from the API's own env file; Compose overrides only what Docker decides.
+    # Stateless: no volume.
+    env_file:
+      - ./apps/api/.env
+    environment:
+      - APP_ENV=production
     healthcheck:
-      # Runs as root: use the system Python in isolated mode (ignores the app-writable cwd).
-      test: ["CMD", "/usr/local/bin/python3", "-I", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6080/')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:50001/api/v1/is-alive')"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
-      start_interval: 1s
+      start_period: 10s
+    networks:
+      - app-network
+    restart: unless-stopped
 
-volumes:
-  dematelab-exports:
-    name: dematelab-exports
+  nginx:
+    container_name: dematelab-nginx
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.prod
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    # The only service published to the outside. Add "443:443" with HTTPS.
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,111 @@
+{
+ "request": {
+  "solver_type": "dematel",
+  "threshold_method": "third_quartile",
+  "factors": [
+   "A",
+   "B"
+  ],
+  "experts": [
+   {
+    "name": "Expert 1",
+    "weight": 1.0,
+    "matrix": [
+     [
+      "No influence",
+      "High influence"
+     ],
+     [
+      "Low influence",
+      "No influence"
+     ]
+    ]
+   }
+  ]
+ },
+ "numpy_version": "2.5.4",
+ "corrected_weights": [
+  1.0
+ ],
+ "result": {
+  "factors": [
+   "A",
+   "B"
+  ],
+  "expert_weights": [
+   1.0
+  ],
+  "direct_matrix": [
+   [
+    0.0,
+    3.0
+   ],
+   [
+    1.0,
+    0.0
+   ]
+  ],
+  "normalized_matrix": [
+   [
+    0.0,
+    1.0
+   ],
+   [
+    0.3333333333333333,
+    0.0
+   ]
+  ],
+  "total_matrix": [
+   [
+    0.4999999999999999,
+    1.4999999999999998
+   ],
+   [
+    0.5,
+    0.4999999999999999
+   ]
+  ],
+  "r": [
+   1.9999999999999996,
+   0.9999999999999999
+  ],
+  "c": [
+   0.9999999999999999,
+   1.9999999999999996
+  ],
+  "prominence": [
+   2.9999999999999996,
+   2.9999999999999996
+  ],
+  "relation": [
+   0.9999999999999997,
+   -0.9999999999999997
+  ],
+  "cause_group": [
+   "A"
+  ],
+  "effect_group": [
+   "B"
+  ],
+  "threshold_method": "third_quartile",
+  "threshold_value": 0.75
+ },
+ "crisp_total_matrix": [
+  [
+   0.4999999999999999,
+   1.4999999999999998
+  ],
+  [
+   0.5,
+   0.4999999999999999
+  ]
+ ],
+ "summary_order": [
+  1,
+  0
+ ],
+ "strongest_relation": 0.9999999999999997,
+ "cluster": {
+  "error_message": "At least 4 off-diagonal matrix values are required for 4-group clustering."
+ }
+}

@@ -1,0 +1,38 @@
+# Builder stage
+FROM node:24-slim AS builder
+
+# Keep in sync with "packageManager" in package.json
+ARG PNPM_VERSION=12.9.1
+RUN npm install -g pnpm@${PNPM_VERSION}
+
+WORKDIR /app
+
+# Install dependencies from the lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Copy source files and build the Nitro server output (.output/).
+# Vite reads the VITE_* values from apps/web/.env (the web app's own env file) and inlines them
+# into the bundle. On the VPS, VITE_API_BASE_URL is empty so the browser calls /api/ through Nginx.
+COPY . .
+RUN test -f .env || { echo "apps/web/.env is missing: copy apps/web/.env.example" >&2; exit 1; }
+RUN pnpm build
+
+# Runner stage
+FROM node:24-slim AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOST=0.0.0.0
+
+# .output is self-contained (server bundle + its node_modules + public assets)
+COPY --from=builder --chown=node:node /app/.output ./.output
+
+# Run as the image's non-root user
+USER node
+
+EXPOSE 3000
+
+CMD ["node", ".output/server/index.mjs"]

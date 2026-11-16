@@ -1,0 +1,35 @@
+name: dematelab-prod
+
+services:
+  dematelab:
+    container_name: dematelab-prod
+    image: dematelab:prod
+    build:
+      context: ./DEMATELab
+      dockerfile: Dockerfile.prod
+    env_file:
+      # Must define VNC_PASSWORD; without it the container waits and reports unhealthy.
+      - path: ./DEMATELab/.env
+        required: true
+    environment:
+      - APP_MODE=prod
+    ports:
+      # Localhost by default; set NOVNC_BIND=0.0.0.0 only behind a TLS reverse proxy or firewall.
+      - "${NOVNC_BIND:-127.0.0.1}:${NOVNC_PORT:-6080}:6080"
+    volumes:
+      - ../data/examples:/workspace/examples:ro
+      - dematelab-exports:/workspace/exports
+    shm_size: 256mb
+    restart: unless-stopped
+    healthcheck:
+      # Runs as root: use the system Python in isolated mode (ignores the app-writable cwd).
+      test: ["CMD", "/usr/local/bin/python3", "-I", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6080/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+      start_interval: 1s
+
+volumes:
+  dematelab-exports:
+    name: dematelab-exports

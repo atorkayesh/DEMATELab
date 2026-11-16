@@ -1,0 +1,11 @@
+{
+ "kind": "workbook",
+ "file": "workbook_wrong_sheet_count.xlsx",
+ "factor_count": 3,
+ "expert_names": [
+  "E1",
+  "E2",
+  "E3"
+ ],
+ "error_message": "Uploaded workbook must contain exactly 3 sheets, one for each expert. Found 2."
+}

@@ -1,0 +1,10 @@
+{
+ "kind": "workbook",
+ "file": "workbook_differing_names.xlsx",
+ "factor_count": 3,
+ "expert_names": [
+  "E1",
+  "E2"
+ ],
+ "error_message": "Uploaded workbook must use the same factor names on every sheet."
+}

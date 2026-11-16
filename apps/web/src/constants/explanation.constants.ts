@@ -1,27 +1,15 @@
-import type { Provider } from "@/interfaces/explanation.interface";
-
-/**
- * Default model per provider (the Qt results viewer's table, also the API's `DEFAULT_MODELS`). The
- * API does not publish it, so the field is prefilled from here; a blank model uses the API's default.
- */
-export const DEFAULT_MODELS: Record<Provider, string> = {
-  Gemini: "gemini-2.5-pro",
-  OpenAI: "gpt-4o-mini",
-  "Azure OpenAI": "gpt-4o-mini",
-  OpenRouter: "openai/gpt-4o-mini",
-  Groq: "llama-3.3-70b-versatile",
-};
-
-export const AZURE_PROVIDER: Provider = "Azure OpenAI";
-
 export const EXPLANATION_TEXT = {
   TITLE: "AI-Assisted Interpretation",
   NOTE: "This section provides an AI-assisted interpretation of the DEMATEL results. Upon configuring the model and supplying an API key, a structured explanation is generated, outlining the key cause–effect relationships, factor roles, and overall system dynamics.",
-  ENGINE: "Engine",
+  PROVIDER: "AI Provider",
   API_KEY: "API Key",
+  SHOW_KEY: "Show API key",
+  HIDE_KEY: "Hide API key",
+  KEY_PRIVACY:
+    "Your API key is only sent to the AI provider for this request. It is never saved, stored in a database or logged.",
   MODEL: "Model",
-  MODEL_PLACEHOLDER: "Leave blank to use the default model",
-  AZURE_MODEL_PLACEHOLDER: "Enter the Azure deployment name",
+  AZURE_MODEL_PLACEHOLDER: "Your Azure deployment name, e.g. gpt-4o-mini",
+  PROVIDERS_ERROR: "The AI providers could not be loaded.",
   GENERATE: "Generate Explanation",
   OUTPUT_LABEL: "Explanation",
 } as const;
@@ -33,6 +21,11 @@ export const EXPLANATION_STATUS = {
   PENDING: "Generating explanation...",
   DONE: "Done",
   ERROR: "Error",
+} as const;
+
+/** Toast shown when generating the explanation fails (the API's message is the description). */
+export const EXPLANATION_TOAST = {
+  ERROR_TITLE: "Could not generate the explanation",
 } as const;
 
 /** Qt's "Azure OpenAI Endpoint" dialog. */

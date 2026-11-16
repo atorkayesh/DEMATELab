@@ -2,21 +2,29 @@ import { z } from "zod";
 import type { AnalysisRequest } from "@/interfaces/analysis.interface";
 import { apiResponseSchema } from "@/interfaces/api.interface";
 
-/** AI providers, in the Qt combo box order (the API's `LlmProvider` values). */
-export const PROVIDERS = [
-  "Gemini",
-  "OpenAI",
-  "Azure OpenAI",
-  "OpenRouter",
-  "Groq",
-] as const;
+/** One AI provider from `GET /explanations/providers`: the API owns the model catalogue. */
+export const explanationProviderSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  models: z.array(z.string()),
+  default_model: z.string().nullable(),
+  free_text_model: z.boolean(),
+});
 
-export type Provider = (typeof PROVIDERS)[number];
+export const explanationProvidersDataSchema = z.object({
+  providers: z.array(explanationProviderSchema),
+});
+
+export const explanationProvidersResponseSchema = apiResponseSchema(
+  explanationProvidersDataSchema,
+);
+
+export type ExplanationProvider = z.infer<typeof explanationProviderSchema>;
 
 /** Body of `POST /explanations`. Built only inside the request; never stored or cached. */
 export interface ExplanationRequest {
   analysis: AnalysisRequest;
-  provider: Provider;
+  provider: string;
   api_key: string;
   model?: string | null;
   azure_endpoint?: string | null;

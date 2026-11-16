@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
   IMPORT_MATRIX: "/imports/matrix",
   IMPORT_WORKBOOK: "/imports/workbook",
   EXPLANATIONS: "/explanations",
+  EXPLANATION_PROVIDERS: "/explanations/providers",
 } as const;
 
 /** Chart resolutions the API accepts: on screen and for downloads. */

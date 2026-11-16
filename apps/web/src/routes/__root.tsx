@@ -8,6 +8,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import type { ReactNode } from "react";
 import { AppLayout } from "@/components/general/AppLayout";
+import { Toaster } from "@/components/ui/sonner";
 import { APP_LOGO_PATH, PAGE_TITLES } from "@/constants/layout.constants";
 import { queryDevtoolsPlugin } from "@/lib/query-devtools";
 import appCss from "@/styles.css?url";
@@ -33,7 +34,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   shellComponent: RootDocument,
 });
 
-/** Document shell: every page renders inside `AppLayout` (header, page, footer). */
+/** Document shell: every page renders inside `AppLayout` (header, page, footer); one app-wide `Toaster`. */
 function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
@@ -42,6 +43,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <AppLayout>{children}</AppLayout>
+        <Toaster />
         {import.meta.env.DEV && (
           <TanStackDevtools
             config={{ position: "bottom-right" }}

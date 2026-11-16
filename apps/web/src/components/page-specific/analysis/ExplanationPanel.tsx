@@ -1,55 +1,59 @@
-import { SparklesIcon } from "lucide-react";
+import { LockIcon, SparklesIcon } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { AzureEndpointDialog } from "@/components/page-specific/analysis/AzureEndpointDialog";
+import { ExplanationSettings } from "@/components/page-specific/analysis/ExplanationSettings";
+import { InlineError } from "@/components/general/InlineError";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  AZURE_PROVIDER,
-  DEFAULT_MODELS,
   EXPLANATION_STATUS,
   EXPLANATION_TEXT,
+  EXPLANATION_TOAST,
 } from "@/constants/explanation.constants";
-import { useExplanation } from "@/hooks/explanation.hook";
+import {
+  useExplanation,
+  useExplanationProviders,
+} from "@/hooks/explanation.hook";
 import type { AnalysisRequest } from "@/interfaces/analysis.interface";
-import { PROVIDERS, type Provider } from "@/interfaces/explanation.interface";
 import { errorMessage } from "@/utils/api.utils";
-
-const FIELD_CLASS = "flex min-w-0 flex-1 basis-48 flex-col gap-1 text-sm";
 
 /**
  * AI explanation of the results snapshot. The API key stays in this component's state and is only
- * sent in the request body; the Azure endpoint is remembered while these results stay.
+ * sent in the request body; the Azure endpoint is remembered while these results stay. Providers and
+ * models come from the API; a provider change resets the model to its default (Azure: empty).
+ * Failures are shown in a toast; the status line shows progress.
  */
 export function ExplanationPanel({ snapshot }: { snapshot: AnalysisRequest }) {
-  const [provider, setProvider] = useState<Provider>(PROVIDERS[0]);
+  const providers = useExplanationProviders();
+  const [providerId, setProviderId] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState<string>(DEFAULT_MODELS[PROVIDERS[0]]);
+  // null = the provider's default model (empty for Azure's free-text deployment name).
+  const [modelChoice, setModelChoice] = useState<string | null>(null);
   const [azureEndpoint, setAzureEndpoint] = useState("");
   const [askEndpoint, setAskEndpoint] = useState(false);
   const [status, setStatus] = useState("");
   const [output, setOutput] = useState("");
   const explanation = useExplanation();
-  const isAzure = provider === AZURE_PROVIDER;
+  const list = providers.data ?? [];
+  const provider = list.find((item) => item.id === providerId) ?? list[0];
+  const model = modelChoice ?? provider?.default_model ?? "";
+  const isAzure = provider?.free_text_model ?? false;
+  const canGenerate =
+    !!provider && !explanation.isPending && (!isAzure || !!model.trim());
 
   const send = (endpoint: string | null) => {
+    if (!provider) return;
     setStatus(EXPLANATION_STATUS.PENDING);
     setOutput("");
     explanation.generate(
       {
         analysis: snapshot,
-        provider,
+        provider: provider.id,
         api_key: apiKey.trim(),
         model: model.trim() || null,
         azure_endpoint: endpoint,
       },
-      // As in Qt: "Done" with the text, or "Error" with the API's message in the output area.
+      // "Done" with the text, or "Error" with the API's message in a toast.
       {
         onSuccess: (data) => {
           setStatus(EXPLANATION_STATUS.DONE);
@@ -57,7 +61,9 @@ export function ExplanationPanel({ snapshot }: { snapshot: AnalysisRequest }) {
         },
         onError: (error) => {
           setStatus(EXPLANATION_STATUS.ERROR);
-          setOutput(errorMessage(error));
+          toast.error(EXPLANATION_TOAST.ERROR_TITLE, {
+            description: errorMessage(error),
+          });
         },
       },
     );
@@ -78,60 +84,29 @@ export function ExplanationPanel({ snapshot }: { snapshot: AnalysisRequest }) {
         <h3 className="font-semibold">{EXPLANATION_TEXT.TITLE}</h3>
         <p className="text-sm text-muted-foreground">{EXPLANATION_TEXT.NOTE}</p>
       </div>
-      <div className="flex flex-wrap gap-3">
-        <div className={FIELD_CLASS}>
-          {EXPLANATION_TEXT.ENGINE}
-          <Select
-            value={provider}
-            onValueChange={(next) => {
-              if (!next) return;
-              setProvider(next as Provider);
-              setModel(DEFAULT_MODELS[next as Provider]);
-            }}
-          >
-            <SelectTrigger
-              aria-label={EXPLANATION_TEXT.ENGINE}
-              className="h-8 w-full bg-card text-base max-sm:h-11 md:text-sm"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent alignItemWithTrigger={false}>
-              {PROVIDERS.map((name) => (
-                <SelectItem
-                  key={name}
-                  value={name}
-                  className="text-base md:text-sm"
-                >
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <label className={FIELD_CLASS}>
-          {EXPLANATION_TEXT.API_KEY}
-          <Input
-            type="password"
-            autoComplete="off"
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-          />
-        </label>
-        <label className={FIELD_CLASS}>
-          {EXPLANATION_TEXT.MODEL}
-          <Input
-            value={model}
-            placeholder={
-              isAzure
-                ? EXPLANATION_TEXT.AZURE_MODEL_PLACEHOLDER
-                : EXPLANATION_TEXT.MODEL_PLACEHOLDER
-            }
-            onChange={(event) => setModel(event.target.value)}
-          />
-        </label>
-      </div>
+      <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+        <LockIcon className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+        {EXPLANATION_TEXT.KEY_PRIVACY}
+      </p>
+      <InlineError
+        message={providers.isError ? EXPLANATION_TEXT.PROVIDERS_ERROR : null}
+      />
+      {provider && (
+        <ExplanationSettings
+          providers={list}
+          provider={provider}
+          apiKey={apiKey}
+          model={model}
+          onProviderChange={(id) => {
+            setProviderId(id);
+            setModelChoice(null);
+          }}
+          onApiKeyChange={setApiKey}
+          onModelChange={setModelChoice}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" onClick={start} disabled={explanation.isPending}>
+        <Button type="button" onClick={start} disabled={!canGenerate}>
           <SparklesIcon data-icon="inline-start" />
           {EXPLANATION_TEXT.GENERATE}
         </Button>

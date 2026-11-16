@@ -51,7 +51,7 @@ apps/web/src/
 │                   # flow, `?step=` validated by flowSearchSchema), status.tsx (/status)
 ├── components/
 │   ├── ui/         # Shadcn components (alert-dialog, badge, button, card, checkbox, dialog, input,
-│   │               # scroll-area, select, separator, tabs)
+│   │               # scroll-area, select, separator, sonner, tabs)
 │   ├── general/    # AppLayout, AppHeader, AppFooter, PageHeader, SectionCard, NumberStepper,
 │   │               # InlineError, ZoomableImage, DownloadButton, NotFound
 │   └── page-specific/
@@ -133,6 +133,12 @@ expert's step is mounted. Tests call `stubLayout()` (`test/render.tsx`) because 
 **Results:** charts are PNGs from the API (`dpi=100` on screen, `300` for downloads), shown through
 object URLs (`useObjectUrl`) with 1.2× zoom steps. The summary PNG is captured in the browser with
 `html-to-image` from an off-screen copy of `SummaryPanel`. Downloads use `saveBlob`.
+
+**AI explanation:** the AI Provider and Model selects come from `GET /explanations/providers`
+(`useExplanationProviders`); a provider change resets the model to its default. Azure OpenAI is a
+free-text deployment name with no default, and Generate stays disabled until it is filled. Failures show
+in a toast (`toast.error` from `sonner`; one themed `<Toaster />` in `__root.tsx`); the status line shows
+progress.
 
 **API key rule:** the AI provider key lives only in `ExplanationPanel`'s component state (a password
 input). It is sent once in the request body and never put in the store, query keys, mutation

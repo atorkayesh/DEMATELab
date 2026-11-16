@@ -1,3 +1,4 @@
+import type { ExplanationProvider } from "@/interfaces/explanation.interface";
 import type { AnalysisRequest } from "@/interfaces/analysis.interface";
 import type { AnalysisData } from "@/interfaces/result.interface";
 import type { MatrixScale, ScalesData } from "@/interfaces/scales.interface";
@@ -149,3 +150,28 @@ export function apiJson(data: unknown, status = 200): Response {
 export function apiErrorBody(message: string, code = "invalid_input") {
   return { success: false, message, data: null, error: { code } };
 }
+
+/** `GET /explanations/providers` data, trimmed to three providers. */
+export const EXPLANATION_PROVIDERS: ExplanationProvider[] = [
+  {
+    id: "Gemini",
+    label: "Gemini",
+    models: ["gemini-4-carbon", "gemini-3.8-flash", "gemini-3.5-flash-lite"],
+    default_model: "gemini-3.5-flash-lite",
+    free_text_model: false,
+  },
+  {
+    id: "Azure OpenAI",
+    label: "Azure OpenAI",
+    models: [],
+    default_model: null,
+    free_text_model: true,
+  },
+  {
+    id: "Anthropic",
+    label: "Anthropic",
+    models: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
+    default_model: "claude-haiku-5-5",
+    free_text_model: false,
+  },
+];

@@ -1,11 +1,14 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
-import { MUTATION_KEYS } from "@/constants/query.constants";
+import { MUTATION_KEYS, QUERY_KEYS } from "@/constants/query.constants";
 import type {
   ExplanationData,
   ExplanationRequest,
 } from "@/interfaces/explanation.interface";
-import { explain } from "@/services/explanation.service";
+import {
+  explain,
+  getExplanationProviders,
+} from "@/services/explanation.service";
 
 /**
  * Generate an AI explanation.
@@ -36,4 +39,13 @@ export function useExplanation() {
     mutation.mutate(undefined, callbacks);
   };
   return { ...mutation, generate };
+}
+
+/** AI providers and their model catalogue from the API; they never change while the app runs. */
+export function useExplanationProviders() {
+  return useQuery({
+    queryKey: QUERY_KEYS.EXPLANATION_PROVIDERS,
+    queryFn: getExplanationProviders,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
 }

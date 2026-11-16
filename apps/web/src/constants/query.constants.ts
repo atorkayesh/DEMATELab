@@ -1,5 +1,6 @@
 export const QUERY_KEYS = {
   SCALES: ["scales"],
+  EXPLANATION_PROVIDERS: ["explanations", "providers"],
   CHART: "chart",
 } as const;
 

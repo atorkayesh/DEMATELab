@@ -1,0 +1,49 @@
+name: dematelab-dev
+
+services:
+  # The TanStack Start app.
+  web:
+    container_name: dematelab-web
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./apps/web/.env
+    volumes:
+      - ./apps/web:/app:z
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  api:
+    container_name: dematelab-api
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "50001:50001"
+    # API settings come from the API's own env file; Compose overrides only what Docker decides.
+    env_file:
+      - ./apps/api/.env
+    environment:
+      - APP_ENV=development
+    volumes:
+      - ./apps/api:/app:z
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:50001/api/v1/is-alive')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge

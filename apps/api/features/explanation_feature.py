@@ -12,11 +12,19 @@ from constants.llm_constants import (
     AZURE_ENDPOINT_PORT,
     AZURE_ENDPOINT_SCHEME,
     DEFAULT_MODELS,
+    FREE_TEXT_MODEL_PROVIDERS,
     OPENAI_COMPATIBLE_URLS,
     OPENROUTER_HEADERS,
+    PROVIDER_MODELS,
     LlmProvider,
 )
-from errors.llm_errors import InvalidAzureEndpointError, MissingApiKeyError, MissingAzureEndpointError
+from errors.llm_errors import (
+    InvalidAzureEndpointError,
+    MissingApiKeyError,
+    MissingAzureDeploymentError,
+    MissingAzureEndpointError,
+    UnsupportedModelError,
+)
 from features.analysis_feature import AnalysisFeature, analysis_feature
 from features.explanation_prompt_feature import ExplanationPromptFeature, explanation_prompt_feature
 from models.explanation_models import ExplanationData, ExplanationRequest
@@ -40,7 +48,7 @@ class ExplanationFeature:
         Args:
             analysis: Analysis feature; defaults to the shared instance
             prompt: Prompt builder; defaults to the shared instance
-            providers: OpenAI-compatible and Azure calls; defaults to the shared instance
+            providers: OpenAI-compatible, Azure and Anthropic calls; defaults to the shared instance
             gemini: Gemini calls; defaults to the shared instance
         """
         self._analysis = analysis or analysis_feature
@@ -62,6 +70,8 @@ class ExplanationFeature:
             MissingApiKeyError: When the key is blank
             MissingAzureEndpointError: When Azure OpenAI has no endpoint
             InvalidAzureEndpointError: When the Azure endpoint is not https on an Azure OpenAI host
+            MissingAzureDeploymentError: When Azure OpenAI has no deployment name
+            UnsupportedModelError: When the model is not in the provider's list (Azure takes any deployment)
         """
         api_key = request.api_key.get_secret_value().strip()
         if not api_key:
@@ -72,11 +82,18 @@ class ExplanationFeature:
             raise MissingAzureEndpointError()
         if provider == LlmProvider.AZURE_OPENAI:
             self._check_azure_endpoint(endpoint)
-        model = (request.model or "").strip() or DEFAULT_MODELS[provider]
+        model = (request.model or "").strip()
+        if provider in FREE_TEXT_MODEL_PROVIDERS and not model:
+            raise MissingAzureDeploymentError()
+        model = model or DEFAULT_MODELS[provider]
+        if provider not in FREE_TEXT_MODEL_PROVIDERS and model not in PROVIDER_MODELS[provider]:
+            raise UnsupportedModelError(f"Model {model!r} is not listed for {provider.value}")
         output = await asyncio.to_thread(self._analysis.solve, request.analysis)
         prompt = self._prompt.build_prompt(self._prompt.build_payload(output))
         if provider == LlmProvider.GEMINI:
             text = await self._gemini.generate(api_key, model, prompt)
+        elif provider == LlmProvider.ANTHROPIC:
+            text = await self._providers.anthropic(api_key, model, prompt)
         elif provider == LlmProvider.AZURE_OPENAI:
             text = await self._providers.azure(endpoint, api_key, model, prompt)
         else:

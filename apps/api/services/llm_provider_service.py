@@ -1,16 +1,23 @@
 """
 HTTP calls to the OpenAI-compatible providers (Groq, OpenRouter, OpenAI) and Azure OpenAI, ported from
-`llm_explanation_service.py:100-195`. One `httpx.AsyncClient` per call. The key is never logged; provider
-response bodies go to the internal `detail` only after the key is removed.
+`llm_explanation_service.py:100-195`, and to the Anthropic Messages API (new in the web app). One
+`httpx.AsyncClient` per call. The key is never logged; provider response bodies go to the internal `detail`
+only after the key is removed.
 """
 
 from typing import Dict, Optional
 
 import httpx
 
-from constants.llm_constants import LLM_SETTINGS
+from constants.llm_constants import ANTHROPIC_SETTINGS, LLM_SETTINGS
 from errors.app_error import AppError
-from errors.llm_errors import LlmAuthError, LlmProviderError, LlmRateLimitError, LlmTimeoutError
+from errors.llm_errors import (
+    AzureDeploymentNotFoundError,
+    LlmAuthError,
+    LlmProviderError,
+    LlmRateLimitError,
+    LlmTimeoutError,
+)
 
 
 class LlmProviderService:
@@ -68,8 +75,45 @@ class LlmProviderService:
         else:
             url = f"{base}/openai/deployments/{model}/chat/completions?api-version={LLM_SETTINGS['AZURE_API_VERSION']}"
         key = api_key.strip()
-        data = await self._post(url, {"api-key": key, "Content-Type": "application/json"}, body, key)
+        headers = {"api-key": key, "Content-Type": "application/json"}
+        data = await self._post(url, headers, body, key, azure=True)
         return self._content(data, "Unexpected response format from Azure OpenAI.")
+
+    async def anthropic(self, api_key: str, model: str, prompt: str) -> str:
+        """
+        Call the Anthropic Messages API.
+
+        Args:
+            api_key: Anthropic key (sent as `x-api-key`)
+            model: Model name
+            prompt: User prompt
+
+        Returns:
+            str: The text blocks of the reply, joined and trimmed
+        """
+        key = api_key.strip()
+        headers = {
+            "x-api-key": key,
+            "anthropic-version": ANTHROPIC_SETTINGS["VERSION"],
+            "content-type": "application/json",
+        }
+        body = {
+            "model": model,
+            "max_tokens": ANTHROPIC_SETTINGS["MAX_TOKENS"],
+            "system": LLM_SETTINGS["SYSTEM_MESSAGE"],
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        data = await self._post(ANTHROPIC_SETTINGS["URL"], headers, body, key)
+        try:
+            text = "".join(block["text"] for block in data["content"] if block.get("type") == "text").strip()
+        except (KeyError, TypeError, AttributeError) as exc:
+            raise LlmProviderError(
+                f"Unexpected Anthropic response shape: {type(exc).__name__}",
+                public_message="Unexpected response format from Anthropic.",
+            ) from exc
+        if not text:
+            raise LlmProviderError("Anthropic response had no text block", public_message="Anthropic returned no text.")
+        return text
 
     def _messages(self, prompt: str) -> list:
         """Build the system and user messages."""
@@ -78,8 +122,8 @@ class LlmProviderService:
             {"role": "user", "content": prompt},
         ]
 
-    async def _post(self, url: str, headers: Dict[str, str], body: dict, key: str) -> dict:
-        """POST JSON and return the decoded response, mapping failures to typed errors."""
+    async def _post(self, url: str, headers: Dict[str, str], body: dict, key: str, azure: bool = False) -> dict:
+        """POST JSON and return the decoded response, mapping failures to typed errors (Azure adds 404)."""
         try:
             async with httpx.AsyncClient(timeout=LLM_SETTINGS["TIMEOUT_SECONDS"], transport=self._transport) as client:
                 response = await client.post(url, headers=headers, json=body)
@@ -88,7 +132,7 @@ class LlmProviderService:
         except httpx.HTTPError as exc:
             raise LlmProviderError(f"Request to {url} failed: {type(exc).__name__}") from exc
         if response.status_code >= 400:
-            raise self._status_error(response, url, key)
+            raise self._status_error(response, url, key, azure)
         try:
             return response.json()
         except ValueError as exc:
@@ -96,7 +140,7 @@ class LlmProviderService:
                 f"Non-JSON response from {url}", public_message="The AI provider returned an unexpected response."
             ) from exc
 
-    def _status_error(self, response: httpx.Response, url: str, key: str) -> AppError:
+    def _status_error(self, response: httpx.Response, url: str, key: str, azure: bool = False) -> AppError:
         """Map an HTTP error status to its typed error; the body (without the key) is kept for the logs."""
         body = response.text[:2000]
         if key:
@@ -106,6 +150,8 @@ class LlmProviderService:
             return LlmAuthError(detail)
         if response.status_code == 429:
             return LlmRateLimitError(detail)
+        if azure and (response.status_code == 404 or "DeploymentNotFound" in body):
+            return AzureDeploymentNotFoundError(detail)
         return LlmProviderError(detail, public_message=f"The AI provider request failed (HTTP {response.status_code}).")
 
     def _content(self, data: dict, message: str) -> str:

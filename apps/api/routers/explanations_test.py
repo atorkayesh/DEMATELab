@@ -2,7 +2,7 @@
 Unit tests for the explanations router.
 
 Tests cover:
-- Success through a mocked feature
+- Success through a mocked feature; the provider catalogue
 - 422s (missing key, unknown provider) never contain the API key in the body or the logs
 """
 
@@ -49,3 +49,17 @@ class TestExplanationsRouter(unittest.TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertNotIn(KEY, response.text)
         self.assertNotIn(KEY, "\n".join(logs.output))
+
+    def test_providers(self):
+        """Test the catalogue lists Anthropic with its cheap default and Azure as free text."""
+        response = self.client.get("/api/v1/explanations/providers")
+        providers = {p["id"]: p for p in response.json()["data"]["providers"]}
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(providers["Anthropic"]["default_model"], "claude-haiku-5-5")
+        self.assertTrue(providers["Azure OpenAI"]["free_text_model"])
+        self.assertFalse(providers["Groq"]["free_text_model"])
+
+    def test_unlisted_model(self):
+        """Test a model outside the provider's list is a 422 with a stable code."""
+        response = self.client.post("/api/v1/explanations", json={**self.body, "api_key": KEY, "model": "gpt-x"})
+        self.assertEqual((response.status_code, response.json()["error"]["code"]), (422, "unsupported_model"))

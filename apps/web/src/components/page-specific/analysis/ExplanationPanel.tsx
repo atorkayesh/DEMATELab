@@ -1,9 +1,9 @@
 import { LockIcon, SparklesIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { InlineError } from "@/components/general/InlineError";
 import { AzureEndpointDialog } from "@/components/page-specific/analysis/AzureEndpointDialog";
 import { ExplanationSettings } from "@/components/page-specific/analysis/ExplanationSettings";
-import { InlineError } from "@/components/general/InlineError";
 import { Button } from "@/components/ui/button";
 import {
   EXPLANATION_STATUS,

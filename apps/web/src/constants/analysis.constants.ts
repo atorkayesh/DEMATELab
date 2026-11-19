@@ -163,8 +163,6 @@ export const START_OVER_TEXT = {
   DESCRIPTION: "All answers, matrices and results will be cleared.",
   CONFIRM: "Start over",
   CANCEL: "Cancel",
-  /** Shown under Back/OK once something is answered: nothing is saved between page loads. */
-  REFRESH_NOTE: "Your answers aren't saved. Refreshing the page starts over.",
 } as const;
 
 /** One-time toast on reaching the Experts step: answers live only in this page. */

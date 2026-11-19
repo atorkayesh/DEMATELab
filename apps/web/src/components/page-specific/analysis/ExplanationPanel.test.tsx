@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ExplanationPanel } from "@/components/page-specific/analysis/ExplanationPanel";
-import { toast } from "sonner";
 import {
   explain,
   getExplanationProviders,

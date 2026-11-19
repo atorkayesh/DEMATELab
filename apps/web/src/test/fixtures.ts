@@ -1,5 +1,5 @@
-import type { ExplanationProvider } from "@/interfaces/explanation.interface";
 import type { AnalysisRequest } from "@/interfaces/analysis.interface";
+import type { ExplanationProvider } from "@/interfaces/explanation.interface";
 import type { AnalysisData } from "@/interfaces/result.interface";
 import type { MatrixScale, ScalesData } from "@/interfaces/scales.interface";
 

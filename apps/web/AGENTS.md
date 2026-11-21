@@ -13,8 +13,8 @@ Biome, Vitest
 
 ## Commands
 
-Run these in the dev container from the repo root: `make check-web`, `make test-web T=<filter>`,
-`make format`, `make sh-web`. The commands below are what they run, and also work outside Docker.
+Run these in the dev container from the repo root: `just check-web`, `just test-web <filter>`,
+`just format`, `just sh-web`. The commands below are what they run, and also work outside Docker.
 
 ```bash
 cd apps/web

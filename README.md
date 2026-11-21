@@ -174,15 +174,17 @@ Notes:
 
 ## Apps
 
-The rebuilt DEMATELab runs in Docker with the root `Makefile` (`make help`). Requirements: Docker (Engine 25+,
-Compose 2.24+) and Make, as listed above.
+The rebuilt DEMATELab runs in Docker with the root `justfile` (`just` lists every recipe). Requirements: Docker
+(Engine 25+, Compose 2.24+) and [just](https://just.systems). Install just with `brew install just` (macOS), `sudo apt install just` (Debian 13+/Ubuntu 24.04+) or the
+[prebuilt binaries](https://just.systems/man/en/pre-built-binaries.html) (Linux, any distribution), or
+`winget install Casey.Just` (Windows).
 
 ```bash
-make setup     # create apps/api/.env and apps/web/.env from their examples
-make dev       # start the API and the web app with hot reload
-make check-api # format check, lint, and tests inside the API container
-make down
-make prod      # production: API (gunicorn) and web behind Nginx on ${HTTP_PORT:-80}
+just setup     # create apps/api/.env and apps/web/.env from their examples
+just dev       # start the API and the web app with hot reload
+just check-api # format check, lint, and tests inside the API container
+just down
+just prod      # production: API (gunicorn) and web, served by the VPS's shared HTTPS proxy
 ```
 
 - Web app: `http://localhost:3000` (details: [`apps/web/README.md`](apps/web/README.md)).
@@ -191,8 +193,13 @@ make prod      # production: API (gunicorn) and web behind Nginx on ${HTTP_PORT:
 - Ports 50001 and 3000 are fixed; stop other apps using them first.
 - The API gives the same numbers as the Qt app for the same input: tests compare it with fixtures generated
   from `qt-app/` (`scripts/generate_parity_fixtures.py`).
-- AI explanations use the key the user enters with each request; it is never stored. Enable HTTPS in
-  `nginx/nginx.prod.conf` before using them on a server.
+- AI explanations use the key the user enters with each request; it is never stored, and travels only
+  over HTTPS on the VPS.
+- On the VPS, one shared Nginx serves this app at `https://dematelab.example.com` and Policy Coherence Kit
+  at `https://policycoherence.example.com`, and owns ports 80 and 443. Its config and the orchestration of
+  both apps live in [`nginx/`](nginx/README.md): `just proxy up-all`, `just proxy up-dematelab`,
+  `just proxy nginx-reload`, `just proxy` to list them
+  ([decision](docs/decisions/2026-11-21-shared-https-proxy-on-the-vps.md)).
 - The legacy Qt app is unchanged: `make -C qt-app dev` (see "Running with Docker (legacy Qt app)").
 
 ## License

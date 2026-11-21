@@ -12,11 +12,11 @@ Agent and coding guidelines: [`AGENTS.md`](./AGENTS.md).
 From the repository root:
 
 ```bash
-make setup    # creates apps/api/.env from .env.example
-make dev
+just setup    # creates apps/api/.env from .env.example
+just dev
 ```
 
-The API runs at `http://localhost:50001` with hot reload. Port 50001 must be free (`make dev` stops with a
+The API runs at `http://localhost:50001` with hot reload. Port 50001 must be free (`just dev` stops with a
 message if another app, for example ice2kg, uses it). See the root [`README.md`](../../README.md).
 
 ## Run locally
@@ -92,8 +92,8 @@ curl -s -X POST http://localhost:50001/api/v1/analysis/charts/heatmap?mode=clust
   -H 'Content-Type: application/json' -d @request.json -o heatmap.png
 ```
 
-AI keys are used once and never stored or logged. Enable HTTPS in Nginx before using the explanation on a
-server (`nginx/nginx.prod.conf`).
+AI keys are used once and never stored or logged. On the VPS the app is served only over HTTPS, through the
+shared proxy (`nginx/conf.d/dematelab.conf`).
 
 ## Environment variables
 

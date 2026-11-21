@@ -2,6 +2,7 @@
 # (a CRLF shebang stops docker/start.sh from running).
 *.sh text eol=lf
 
-# Read by make and docker compose on the host; keep them LF so values and recipes have no stray CR.
+# Read by just and docker compose on the host; keep them LF so values and recipes have no stray CR.
+justfile text eol=lf
 Makefile text eol=lf
 .env.example text eol=lf

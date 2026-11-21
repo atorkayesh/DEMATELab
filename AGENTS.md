@@ -26,19 +26,21 @@ Browser ──► web (TanStack Start, :3000) ──► api (FastAPI, :50001, /a
   ([decision](./docs/decisions/2026-11-16-ai-keys-supplied-per-request.md)).
 - **Numerical parity:** for the same input, every number equals the Qt app's, proven by fixtures generated
   from `qt-app/` (`scripts/generate_parity_fixtures.py`, see `apps/api/AGENTS.md`).
-- **Nginx** reverse-proxies web (`/`) and api (`/api/`) in production and is the only public service.
+- **Nginx** reverse-proxies web (`/`) and api (`/api/`) in production. On the VPS that is the shared HTTPS
+  proxy in `nginx/` (also serving Policy Coherence Kit, whose routes live in `nginx/conf.d/` too)
+  ([decision](./docs/decisions/2026-11-21-shared-https-proxy-on-the-vps.md)).
 
 ### Repository layout
 
 ```
 apps/api/       FastAPI app (see apps/api/AGENTS.md)
 apps/web/       TanStack Start app (Typeform-style flow on /, results, /status)
-nginx/          Production reverse proxy (HTTPS block commented out until deployment)
+nginx/          Shared HTTPS proxy for the VPS (DEMATELab + PCK) and its orchestration (just proxy …)
 qt-app/         Legacy PySide6 app, its own Makefile and Compose files (read-only reference)
 data/examples/  Sample workbooks
 scripts/        generate_parity_fixtures.py (runs against qt-app/, writes apps/api/tests/fixtures/)
 docs/           plans/, decisions/, reports/, research/ (each with an authoring guide)
-Makefile        Dev, check, and production entrypoints (make help)
+justfile        Dev, check, and production entrypoints (just)
 docker-compose-dev.yml / docker-compose-prod.yml
 ```
 
@@ -52,29 +54,30 @@ docker-compose-dev.yml / docker-compose-prod.yml
 
 ## Running the App
 
-Run the app in Docker. The root `Makefile` is the entrypoint: `make help` lists every target
-([decision](./docs/decisions/2026-11-16-make-entrypoint-with-container-first-checks.md)).
+Run the app in Docker. The root `justfile` is the entrypoint: `just` lists every recipe
+([decision](./docs/decisions/2026-11-21-just-entrypoint-with-container-first-checks.md)).
 
 ```bash
-make setup          # create apps/api/.env and apps/web/.env from their examples
+just setup          # create apps/api/.env and apps/web/.env from their examples
 
-make dev            # docker compose -f docker-compose-dev.yml up -d --build --wait (api on :50001, web on :3000)
-make down           # stop and remove the dev containers
-make logs S=api     # follow logs
-make sh-api         # shell in dematelab-api
+just dev            # docker compose -f docker-compose-dev.yml up -d --build --wait (api on :50001, web on :3000)
+just down           # stop and remove the dev containers
+just logs api       # follow logs
+just sh-api         # shell in dematelab-api
 
-make check-api      # ruff format --check, ruff check, pytest inside the dev container
-make test-api T="tests/parity_integration_test.py -v"
-make format
+just check-api      # ruff format --check, ruff check, pytest inside the dev container
+just test-api tests/parity_integration_test.py -v
+just format
 
-make prod           # api (gunicorn), web, and Nginx on ${HTTP_PORT:-80}
-make prod-logs S=nginx
+just prod           # api (gunicorn) and web; the VPS's shared proxy serves them over HTTPS
+just prod-logs api
+just proxy up-all   # VPS: both apps and the shared HTTPS proxy (nginx/README.md)
 ```
 
-- make uses `docker` when installed, otherwise `podman`.
+- just uses `docker` when installed, otherwise `podman` (override with `DOCKER=podman just …`).
 - Ports are fixed: API 50001, web 3000. If another app holds them (for example ice2kg on the same
-  machine), `make dev` stops with a message; free the port and retry.
-- Web checks: `make check-web` runs `cd apps/web && pnpm run format:check && pnpm run lint && pnpm run
+  machine), `just dev` stops with a message; free the port and retry.
+- Web checks: `just check-web` runs `cd apps/web && pnpm run format:check && pnpm run lint && pnpm run
   typecheck && pnpm run test` inside the web container.
 - The legacy Qt app keeps its own setup: `make -C qt-app dev` (noVNC at `http://localhost:6080`). Its dev
   Compose project is also called `dematelab-dev`; run one of the two dev stacks at a time.
@@ -85,11 +88,11 @@ make prod-logs S=nginx
 |---|---|---|---|---|
 | `web` | `dematelab-web` | TanStack Start app | 3000 | not published |
 | `api` | `dematelab-api` | FastAPI API | 50001 | not published |
-| `nginx` | `dematelab-nginx` | Reverse proxy (prod only) | – | `${HTTP_PORT:-80}` |
+| – | `proxy-nginx` (`nginx/docker-compose.yml`) | Shared HTTPS proxy, VPS only | – | 80, 443 |
 
 ### Environment files
 
-Each service has its own env file, created from the `.env.example` next to it (`make setup`); there is no
+Each service has its own env file, created from the `.env.example` next to it (`just setup`); there is no
 root `.env` ([decision](./docs/decisions/2026-11-16-each-service-has-its-own-env-file.md)).
 
 | File | Used by | Holds |
@@ -98,8 +101,8 @@ root `.env` ([decision](./docs/decisions/2026-11-16-each-service-has-its-own-env
 | `apps/web/.env` | `web` | `VITE_APP_ENV`, `VITE_API_BASE_URL` (public: inlined into the bundle, never secrets) |
 | `qt-app/DEMATELab/.env` | legacy Qt containers | `VNC_PASSWORD`, `NOVNC_PORT`, … |
 
-On the VPS: `CORS_ORIGINS` set to the public origin, and **HTTPS enabled in Nginx before the AI
-explanation is used** (keys travel in request bodies). Never commit `.env` files.
+On the VPS: `CORS_ORIGINS` set to the public origin (`https://dematelab.example.com`), and the app is
+reached only over HTTPS through the shared proxy (keys travel in request bodies). Never commit `.env` files.
 
 ---
 
@@ -111,7 +114,7 @@ explanation is used** (keys travel in request bodies). Never commit `.env` files
 3. **Keep changes in scope**; preserve Qt behaviour unless a decision says otherwise.
 4. **Add or update tests** for every important function, route, service, or feature.
 5. **Keep every code file at or below 300 lines** (tests included; fixtures, lockfiles, and `.md` exempt).
-6. **Before committing:** run `make format` and `make check-api` (or `cd apps/api && uv run ruff format
+6. **Before committing:** run `just format` and `just check-api` (or `cd apps/api && uv run ruff format
    --check . && uv run ruff check . && uv run pytest`), fix every failure, and re-run until they pass.
 7. **Update docs** when behaviour changes: the app's AGENTS.md for rules, README files for setup.
 
@@ -120,7 +123,7 @@ explanation is used** (keys travel in request bodies). Never commit `.env` files
 ## Pre-Commit Checklist
 
 - [ ] Changes follow the app's AGENTS.md rules
-- [ ] Tests written or updated, and all checks pass (`make check-api`)
+- [ ] Tests written or updated, and all checks pass (`just check-api`)
 - [ ] Parity fixtures regenerated from `qt-app/` if maths or Qt-derived behaviour changed
 - [ ] Every code file in `apps/` is at or below 300 lines
 - [ ] No hardcoded secrets; no AI keys in env files or logs

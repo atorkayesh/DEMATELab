@@ -12,8 +12,8 @@ Pydantic Settings, uv, Ruff, pytest
 
 ## Commands
 
-Run these in the dev container from the repo root: `make check-api`, `make test-api T="<pytest args>"`,
-`make format`, `make lint`, `make sh-api` (root `AGENTS.md` → Running the App). The commands below
+Run these in the dev container from the repo root: `just check-api`, `just test-api <pytest args>`,
+`just format`, `just lint`, `just sh-api` (root `AGENTS.md` → Running the App). The commands below
 are what they run, and also work outside Docker.
 
 ```bash
@@ -153,7 +153,7 @@ arbitrarily. See the [root `AGENTS.md`](../../AGENTS.md) → Development Workflo
 
 ### Committing
 
-Run `make format` and `make check-api`, fix every failure,
+Run `just format` and `just check-api`, fix every failure,
 and re-run until they pass before committing (root `AGENTS.md` → Development Workflow).
 
 ---

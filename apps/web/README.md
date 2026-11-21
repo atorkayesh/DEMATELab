@@ -23,8 +23,8 @@ Agent and coding guidelines: [`AGENTS.md`](./AGENTS.md).
 From the repository root:
 
 ```bash
-make setup    # creates apps/web/.env and apps/api/.env from their examples
-make dev
+just setup    # creates apps/web/.env and apps/api/.env from their examples
+just dev
 ```
 
 The web app runs at `http://localhost:3000` with hot reload, the API at `http://localhost:50001`.

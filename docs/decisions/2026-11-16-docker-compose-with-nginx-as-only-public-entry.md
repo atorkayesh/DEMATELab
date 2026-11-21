@@ -1,6 +1,6 @@
 # Docker Compose With Nginx As The Only Public Entry
 
-**Status:** Accepted
+**Status:** Superseded by [A Shared HTTPS Proxy Serves The App On The VPS](./2026-11-21-shared-https-proxy-on-the-vps.md)
 **Date:** 16 November, 2026
 **Deciders:** Youpele Michael (with Claude Code)
 

@@ -1,0 +1,118 @@
+# Shared HTTPS proxy on the VPS, and orchestration of both apps behind it (README.md in this folder).
+# From the repo root this file is the module `proxy`: `just proxy up-all`, `just proxy --list`.
+# In this folder it also runs on its own: `just up-all`.
+# App recipes call each repo's own `just prod*` recipes, so each repo's justfile stays the single source of
+# truth for how that app is built and started.
+
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+# This repo (the parent of nginx/) and Policy Coherence Kit's checkout (override with PCK_DIR).
+dematelab := parent_directory(source_directory())
+pck       := env("PCK_DIR", "/srv/policycoherencekit")
+network   := "proxy"
+compose   := "docker compose -f " + source_directory() / "docker-compose.yml"
+just      := just_executable()
+
+# List every recipe
+[private]
+default:
+    @{{just}} --justfile {{source_file()}} --list --unsorted
+
+# ── Everything ───────────────────────────────────────────────────────────────────────────────────
+
+# Start both apps, then the shared Nginx
+up-all: network up-dematelab up-policycoherencekit up-nginx status
+
+# Stop the shared Nginx, then both apps
+down-all: down-nginx down-dematelab down-policycoherencekit
+
+# Show every container of the setup
+status:
+    @docker ps -a --filter name='^(proxy-nginx|dematelab-|policycoherencekit-)' \
+        --format 'table {{{{.Names}}\t{{{{.Status}}\t{{{{.Ports}}'
+
+# Create the shared Docker network if it is missing (idempotent)
+network:
+    @docker network inspect {{network}} >/dev/null 2>&1 || docker network create {{network}}
+
+# ── DEMATELab (https://dematelab.example.com) ──────────────────────────────────────────────────
+
+# Build and start DEMATELab (web + api)
+up-dematelab: network
+    cd {{dematelab}} && {{just}} prod
+
+# Stop and remove DEMATELab's containers
+down-dematelab:
+    cd {{dematelab}} && {{just}} prod-down
+
+# Restart DEMATELab, or one service: just proxy restart-dematelab api
+restart-dematelab service="":
+    cd {{dematelab}} && {{just}} prod-restart {{service}}
+
+# Show DEMATELab's containers and health
+status-dematelab:
+    cd {{dematelab}} && {{just}} prod-ps
+
+# Follow DEMATELab's logs, or one service's: just proxy logs-dematelab web
+logs-dematelab service="":
+    cd {{dematelab}} && {{just}} prod-logs {{service}}
+
+# ── Policy Coherence Kit (https://policycoherence.example.com) ─────────────────────────────────
+
+# Build and start Policy Coherence Kit (web + api)
+up-policycoherencekit: network
+    cd {{pck}} && {{just}} prod
+
+# Stop and remove Policy Coherence Kit's containers
+down-policycoherencekit:
+    cd {{pck}} && {{just}} prod-down
+
+# Restart Policy Coherence Kit, or one service: just proxy restart-policycoherencekit api
+restart-policycoherencekit service="":
+    cd {{pck}} && {{just}} prod-restart {{service}}
+
+# Show Policy Coherence Kit's containers and health
+status-policycoherencekit:
+    cd {{pck}} && {{just}} prod-ps
+
+# Follow Policy Coherence Kit's logs, or one service's: just proxy logs-policycoherencekit api
+logs-policycoherencekit service="":
+    cd {{pck}} && {{just}} prod-logs {{service}}
+
+# ── Shared Nginx (ports 80 and 443) ──────────────────────────────────────────────────────────────
+
+# Validate the config, then start the shared Nginx
+up-nginx: network nginx-test
+    {{compose}} up -d
+
+# Stop and remove the shared Nginx (both sites go offline)
+down-nginx:
+    {{compose}} down
+
+# Restart the shared Nginx container (prefer nginx-reload for config edits: no dropped connections)
+restart-nginx: nginx-test
+    {{compose}} restart nginx
+
+# Show the shared Nginx container
+status-nginx:
+    {{compose}} ps
+
+# Follow the shared Nginx logs
+logs-nginx:
+    {{compose}} logs -f --tail=100 nginx
+
+# Check the config with `nginx -t` (inside the running container, or a throwaway one when stopped)
+nginx-test: network
+    @if [ "$(docker inspect -f '{{{{.State.Running}}' proxy-nginx 2>/dev/null)" = "true" ]; then \
+        docker exec proxy-nginx nginx -t; \
+    else \
+        {{compose}} run --rm --no-deps -T nginx nginx -t; \
+    fi
+
+alias reload-nginx := nginx-reload
+
+# Validate, then reload the config without dropping connections
+nginx-reload:
+    docker exec proxy-nginx nginx -t
+    docker exec proxy-nginx nginx -s reload
+    @echo "→ reloaded"

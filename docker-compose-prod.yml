@@ -12,6 +12,8 @@ services:
       - api
     networks:
       - app-network
+      # The shared HTTPS proxy (nginx/ in the DEMATELab repo) reaches this container as dematelab-web.
+      - proxy
     restart: unless-stopped
 
   api:
@@ -33,25 +35,15 @@ services:
       start_period: 10s
     networks:
       - app-network
-    restart: unless-stopped
-
-  nginx:
-    container_name: dematelab-nginx
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile.prod
-    depends_on:
-      api:
-        condition: service_healthy
-      web:
-        condition: service_started
-    # The only service published to the outside. Add "443:443" with HTTPS.
-    ports:
-      - "${HTTP_PORT:-80}:80"
-    networks:
-      - app-network
+      # The shared HTTPS proxy (nginx/ in the DEMATELab repo) reaches this container as dematelab-api.
+      - proxy
     restart: unless-stopped
 
 networks:
   app-network:
     driver: bridge
+  # Shared with the HTTPS proxy in DEMATELab's nginx/. External, so `just prod-down` never removes it;
+  # `just prod` creates it when missing.
+  proxy:
+    external: true
+    name: proxy

@@ -1,5 +1,5 @@
 # Shared HTTPS proxy for the VPS: the only container publishing ports 80 and 443. Routes by host name to
-# DEMATELab and Policy Coherence Kit (see conf.d/). Run it through the justfile: `just proxy <recipe>` from
+# DEMATELab and Policy Coherence Kit (see templates/). Run it through the justfile: `just proxy <recipe>` from
 # the repo root, or `just <recipe>` in this folder. See README.md.
 name: proxy
 
@@ -8,13 +8,22 @@ services:
     image: nginx:stable-alpine
     container_name: proxy-nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - "${PROXY_BIND_IP:+${PROXY_BIND_IP}:}80:80"
+      - "${PROXY_BIND_IP:+${PROXY_BIND_IP}:}443:443"
+    environment:
+      NGINX_ENVSUBST_FILTER: '^PROXY_(DEMATELAB_HOST|PCK_HOST|TLS_CERT|TLS_KEY)$$'
+      PROXY_DEMATELAB_HOST: ${PROXY_DEMATELAB_HOST:?Set the DEMATELab hostname}
+      PROXY_PCK_HOST: ${PROXY_PCK_HOST:?Set the Policy Coherence Kit hostname}
+      PROXY_TLS_CERT: ${PROXY_TLS_CERT:?Set the TLS certificate filename}
+      PROXY_TLS_KEY: ${PROXY_TLS_KEY:?Set the TLS key filename}
     volumes:
-      # Mounted, not baked into an image, so `just nginx-reload` applies edits without a rebuild.
-      - ./conf.d:/etc/nginx/conf.d:ro
-      # One institutional certificate covers all four host names (see README).
-      - /srv/certificates:/etc/nginx/certs:ro
+      - ./templates:/etc/nginx/templates:ro
+      - type: bind
+        source: ${PROXY_CERT_DIR:?Set the host certificate directory}
+        target: /etc/nginx/certs
+        read_only: true
+        bind:
+          create_host_path: false
     networks:
       - proxy
     restart: unless-stopped

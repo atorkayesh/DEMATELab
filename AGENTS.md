@@ -27,7 +27,7 @@ Browser ──► web (TanStack Start, :3000) ──► api (FastAPI, :50001, /a
 - **Numerical parity:** for the same input, every number equals the Qt app's, proven by fixtures generated
   from `qt-app/` (`scripts/generate_parity_fixtures.py`, see `apps/api/AGENTS.md`).
 - **Nginx** reverse-proxies web (`/`) and api (`/api/`) in production. On the VPS that is the shared HTTPS
-  proxy in `nginx/` (also serving Policy Coherence Kit, whose routes live in `nginx/conf.d/` too)
+  proxy in `nginx/` (also serving Policy Coherence Kit, whose routes live in `nginx/templates/` too)
   ([decision](./docs/decisions/2026-11-21-shared-https-proxy-on-the-vps.md)).
 
 ### Repository layout

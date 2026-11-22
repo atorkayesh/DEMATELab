@@ -195,8 +195,8 @@ just prod      # production: API (gunicorn) and web, served by the VPS's shared 
   from `qt-app/` (`scripts/generate_parity_fixtures.py`).
 - AI explanations use the key the user enters with each request; it is never stored, and travels only
   over HTTPS on the VPS.
-- On the VPS, one shared Nginx serves this app at `https://dematelab.example.com` and Policy Coherence Kit
-  at `https://policycoherence.example.com`, and owns ports 80 and 443. Its config and the orchestration of
+- In production, one shared Nginx serves this app and Policy Coherence Kit on ports 80 and 443.
+  Set the deployment hostnames in the proxy environment file. Its config and the orchestration of
   both apps live in [`nginx/`](nginx/README.md): `just proxy up-all`, `just proxy up-dematelab`,
   `just proxy nginx-reload`, `just proxy` to list them
   ([decision](docs/decisions/2026-11-21-shared-https-proxy-on-the-vps.md)).

@@ -51,13 +51,13 @@ and HTTPS (needed because users send AI provider keys in request bodies) was com
 ### Phase 1: Shared proxy in `nginx/`
 
 - `nginx/docker-compose.yml` (Compose project `proxy`, container `proxy-nginx`, `nginx:stable-alpine`, ports
-  80/443, `conf.d/` and `/srv/certificates` mounted read-only, external network `proxy`).
-- `nginx/conf.d/00-default.conf` (resolver `127.0.0.11`, TLS settings, catch-all: 444 on HTTP, handshake
-  rejected on HTTPS), `nginx/conf.d/dematelab.conf`, `nginx/conf.d/policycoherencekit.conf` (redirect, HTTPS
+  80/443, templates and the configured certificate directory mounted read-only, external network `proxy`).
+- `nginx/templates/default.conf.template` (resolver `127.0.0.11`, TLS settings, catch-all: 444 on HTTP, handshake
+  rejected on HTTPS), `nginx/templates/dematelab.conf.template`, `nginx/templates/policycoherencekit.conf.template` (redirect, HTTPS
   server, commented HTTP-only rollback). Upstreams by container name (`dematelab-web:3000`, …), because both
   projects name their services `web`/`api`.
 - `nginx/justfile`, loaded by the root justfile as the module `proxy` (`just proxy up-all`), or run directly
-  with `cd nginx && just up-all`. PCK's location is `PCK_DIR` (default `/srv/policycoherencekit`).
+  with `cd nginx && just up-all`. PCK's location is `PCK_DIR` (default a sibling checkout).
 - Both repos: `web` and `api` join the external network `proxy`; the per-app `nginx` service and PCK's
   `nginx/` folder are removed.
 
